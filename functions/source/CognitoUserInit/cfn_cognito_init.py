@@ -1,8 +1,11 @@
 import cfnresponse
 import boto3
 import json
-import secrets
+import random
+import string
+
 from datetime import datetime
+
 
 def lambda_handler(event, context):
     """Lambda Handler for dealing with creating a new cognito user using AWS Cognito
@@ -16,9 +19,15 @@ def lambda_handler(event, context):
         username = 'admin'
        
         # Generate random word using secrets for 20 characters long
-        # TODO: Identify another package that can force a password gen with symbols included
-        password = secrets.token_urlsafe(27)
-        password += "#$%^%"
+        length = 20
+        lower = string.ascii_lowercase
+        upper = string.ascii_uppercase
+        num = string.digits
+        symbols = string.punctuation
+        all = lower + upper + num + symbols
+        temp = random.sample(all,length)
+        password = "".join(temp)
+        
 
         if event['RequestType'] in ['Create', 'Delete', 'Update']:      
             # Run in the cloud to make cognito user
