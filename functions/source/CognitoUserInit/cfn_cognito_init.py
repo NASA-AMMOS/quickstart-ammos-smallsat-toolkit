@@ -25,7 +25,17 @@ def lambda_handler(event, context):
         num = string.digits
         symbols = string.punctuation
         all = lower + upper + num + symbols
-        temp = random.sample(all,length)
+def rand_seq(seq, at_least: int, at_most: int) -> list:
+    n = secrets.choice(range(at_least, at_most + 1))
+    return [secrets.choice(seq) for _ in range(n)]
+
+pw = []
+pw += rand_seq(string.punctuation, 1, 3)
+pw += rand_seq(string.digits, 1, 3)
+pw += rand_seq(string.ascii_uppercase, 3, 9)
+n = length - len(pw)
+pw += rand_seq(string.ascii_lowercase, n, n)
+pw = "".join(pw)
         password = "".join(temp)
         
 
