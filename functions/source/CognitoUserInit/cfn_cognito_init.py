@@ -32,9 +32,9 @@ def lambda_handler(event, context):
     password += rand_seq(string.punctuation, 1, 3)
     password += rand_seq(string.digits, 1, 3)
     password += rand_seq(string.ascii_uppercase, 3, 9)
-    password = length - len(pw)
-    pw += rand_seq(string.ascii_lowercase, n, n)
-    pw = "".join(pw)
+    password = length - len(password)
+    password += rand_seq(string.ascii_lowercase, n, n)
+    password = "".join(password)
     
 
     if event['RequestType'] in ['Create', 'Delete', 'Update']:      
