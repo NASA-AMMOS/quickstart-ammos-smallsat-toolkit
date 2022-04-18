@@ -4,8 +4,6 @@ import json
 import random
 import string
 
-from datetime import datetime
-
 
 def lambda_handler(event, context):
     """Lambda Handler for dealing with creating a new cognito user using AWS Cognito
@@ -15,7 +13,7 @@ def lambda_handler(event, context):
         context (obj): Context manager
     """
     try:
-        userId = event['ResourceProperties']['UserPoolId']
+        user_pool_id = event['ResourceProperties']['UserPoolId']
         username = 'admin'
        
         # Generate random word using secrets for 20 characters long
@@ -43,13 +41,14 @@ pw = "".join(pw)
             # Run in the cloud to make cognito user
             client = boto3.client('cognito-idp') 
             cidp_response = client.admin_create_user(
-                UserPoolId = userId,
+                UserPoolId = user_pool_id,
                 Username = username,
                 TemporaryPassword = password
             )
 
             cfn_response_from_cidp = json.dumps(cidp_response, indent=4, sort_keys=True, default=str)
             cfn_response_from_cidp = json.loads(cfn_response_from_cidp)
+            cfn_response_from_cidp['TemporaryPassword'] = password
 
             # Send response back with CIDP Response to CFN
             cfnresponse.send(event, context, cfnresponse.SUCCESS, cfn_response_from_cidp)
@@ -57,4 +56,4 @@ pw = "".join(pw)
     except Exception as err:
         print("Lambda execution failed to create AWS Cognito user")
         print(err)
-        cfnresponse.send(event, context, cfnresponse.SUCCESS, {'responseValue': 400})
+        cfnresponse.send(event, context, cfnresponse.FAILED, {'responseValue': 400})
