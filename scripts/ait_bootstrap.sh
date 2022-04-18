@@ -88,6 +88,11 @@ cd $PROJECT_HOME/AIT-GUI/
 git checkout 2.3.1
 pip install .
 
+git clone https://github.com/NASA-AMMOS/AIT-DSN.git $PROJECT_HOME/AIT-DSN
+cd $PROJECT_HOME/AIT-DSN
+git checkout 2.0.0
+pip install .
+
 # Copy necessary apache configs
 cp $SETUP_DIR/httpd_proxy.conf /etc/httpd/conf.d/proxy.conf
 
