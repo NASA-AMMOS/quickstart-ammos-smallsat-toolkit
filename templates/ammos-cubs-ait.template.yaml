@@ -38,7 +38,7 @@ Parameters:
   CognitoDomainName:
     Type: String
   ALBSecurityGroupID:
-    Type: String
+    Type: AWS::EC2::SecurityGroup::Id
   CognitoClientID:
     Type: String
   CognitoClientSecret:

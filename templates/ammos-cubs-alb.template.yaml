@@ -18,11 +18,11 @@ Parameters:
     Type: List<AWS::EC2::Subnet::Id>
   AccessSgID:
     Description: (Optional) ID of pre-configured Security Group to control access to ALB
-    Type: String
+    Type: AWS::EC2::SecurityGroup::Id
     Default: ''
   HostedZoneID:
     Description: ID of Route53 Hosted Zone in which to create records for discovery
-    Type: String
+    Type: AWS::Route53::HostedZone::Id
   CognitoUserPoolID:
     Description: User Pool ID of the pre-configured Cognito Environment
     Type: String

@@ -35,7 +35,7 @@ Parameters:
     Type: String
   ALBSecurityGroupID:
     Description: ID of Pre-configured Security Group attached to the ALB
-    Type: String
+    Type: AWS::EC2::SecurityGroup::Id
   CognitoClientID:
     Description: Client ID from pre-configured cognito environment
     Type: String

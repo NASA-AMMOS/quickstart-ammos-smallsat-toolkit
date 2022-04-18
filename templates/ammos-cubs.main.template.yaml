@@ -213,7 +213,7 @@ Parameters:
     Default: ''
   HostedZoneID:
     Description: (Optional) ID of the Route 53 hosted-zone domain. If you fill in both FQDN and HostedZoneID, this deployment generates an ACM certificate.
-    Type: String
+    Type: AWS::Route53::HostedZone::Id
     MaxLength: 32
     Default: ''
   FQDN:
@@ -234,31 +234,31 @@ Parameters:
     ConstraintDescription: The ProjectName can include numbers, lowercase letters, and hyphens (-).
   VpcId:
     Description: (Optional) If you're deploying into an existing VPC, fill in the VPC ID.
-    Type: String
+    Type: AWS::EC2::VPC::Id
     Default: ''
   PublicSubnet1ID:
     Description: (Optional) If you're deploying into an existing VPC, fill in the ID of the public subnet in Availability Zone 1.
-    Type: String
+    Type: AWS::EC2::Subnet::Id
     Default: ''
   PublicSubnet2ID:
     Description: (Optional) If you're deploying into an existing VPC, fill in the ID of the public subnet in Availability Zone 2.
-    Type: String
+    Type: AWS::EC2::Subnet::Id
     Default: ''
   PrivateSubnet1AID:
     Description: (Optional) If you're deploying into an existing VPC, fill in the ID of the private subnet in Availability Zone 1.
-    Type: String
+    Type: AWS::EC2::Subnet::Id
     Default: ''
   PrivateSubnet2AID:
     Description: (Optional) If you're deploying into an existing VPC, fill in the ID of the private subnet in Availability Zone 2.
-    Type: String
+    Type: AWS::EC2::Subnet::Id
     Default: ''
   PrivateSubnet3AID:
     Description: (Optional) If you're deploying into an existing VPC, fill in the ID of the private subnet in Availability Zone 3.
-    Type: String
+    Type: AWS::EC2::Subnet::Id
     Default: ''
   AccessSgID:
     Description: (Optional) If you're deploying into an existing VPC, fill in the ID of the preconfigured security group to control access to the Application Load Balancer.
-    Type: String
+    Type: AWS::EC2::SecurityGroup::Id
     Default: ''
   DeployIam:
     Description: Allow the QuickStart to deploy the required IAM Roles on your behalf. Otherwise, you will need to pre-deploy
