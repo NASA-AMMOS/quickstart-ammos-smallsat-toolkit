@@ -1,9 +1,19 @@
+from operator import length_hint
 import cfnresponse
 import boto3
+import botocore
 import json
 import random
 import string
+import secrets
+import logger
 
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+def rand_seq(seq, at_least: int, at_most: int) -> list:
+    n = secrets.choice(range(at_least, at_most + 1))
+    return [secrets.choice(seq) for _ in range(n)]
 
 def lambda_handler(event, context):
     """Lambda Handler for dealing with creating a new cognito user using AWS Cognito
@@ -12,34 +22,26 @@ def lambda_handler(event, context):
         event (dict): Event dictionary from custom resource
         context (obj): Context manager
     """
-    try:
-        user_pool_id = event['ResourceProperties']['UserPoolId']
-        username = 'admin'
-       
-        # Generate random word using secrets for 20 characters long
-        length = 20
-        lower = string.ascii_lowercase
-        upper = string.ascii_uppercase
-        num = string.digits
-        symbols = string.punctuation
-        all = lower + upper + num + symbols
-def rand_seq(seq, at_least: int, at_most: int) -> list:
-    n = secrets.choice(range(at_least, at_most + 1))
-    return [secrets.choice(seq) for _ in range(n)]
 
-pw = []
-pw += rand_seq(string.punctuation, 1, 3)
-pw += rand_seq(string.digits, 1, 3)
-pw += rand_seq(string.ascii_uppercase, 3, 9)
-n = length - len(pw)
-pw += rand_seq(string.ascii_lowercase, n, n)
-pw = "".join(pw)
-        password = "".join(temp)
-        
+    user_pool_id = event['ResourceProperties']['UserPoolId']
+    username = 'admin'
+    
+    # Generate random word using secrets for 20 characters long
+    length = 20
+    password = []
+    password += rand_seq(string.punctuation, 1, 3)
+    password += rand_seq(string.digits, 1, 3)
+    password += rand_seq(string.ascii_uppercase, 3, 9)
+    password = length - len(pw)
+    pw += rand_seq(string.ascii_lowercase, n, n)
+    pw = "".join(pw)
+    
 
-        if event['RequestType'] in ['Create', 'Delete', 'Update']:      
-            # Run in the cloud to make cognito user
-            client = boto3.client('cognito-idp') 
+    if event['RequestType'] in ['Create', 'Delete', 'Update']:      
+        # Run in the cloud to make cognito user
+        client = boto3.client('cognito-idp') 
+
+        try:
             cidp_response = client.admin_create_user(
                 UserPoolId = user_pool_id,
                 Username = username,
@@ -53,7 +55,10 @@ pw = "".join(pw)
             # Send response back with CIDP Response to CFN
             cfnresponse.send(event, context, cfnresponse.SUCCESS, cfn_response_from_cidp)
 
-    except Exception as err:
-        print("Lambda execution failed to create AWS Cognito user")
-        print(err)
-        cfnresponse.send(event, context, cfnresponse.FAILED, {'responseValue': 400})
+        except botocore.exceptions.ClientError as e:
+            logger.error("Error: {}".format(e))
+            cfn_response = {}
+            cfnresponse.send(event, context, cfnresponse.FAILED, cfn_response)
+    else:
+        responseData = {"message": "Invalid Request Type"}
+        cfnresponse.send(event, context, cfnresponse.FAILED, )

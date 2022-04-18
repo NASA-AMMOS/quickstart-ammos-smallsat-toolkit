@@ -32,7 +32,7 @@ Conditions:
   UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-quickstart']
 
 Resources:
-  UserPoolInitCustomResource:
+  CognitoDefaultUser:
     Type: AWS::CloudFormation::CustomResource
     Properties:
       ServiceToken: !GetAtt CognitoInitializationFunction.Arn
@@ -104,3 +104,6 @@ Outputs:
   CognitoUserPoolProviderUrl:
     Description: URL for the cognito provider (Issuer attribute)
     Value: !GetAtt UserPool.ProviderURL
+  CognitoDefaultUserTempPassword:
+    Description: Temporary Password for the Cognito User created by CognitoDefaultUser
+    Value: !GetAtt   CognitoDefaultUser.TemporaryPassword
