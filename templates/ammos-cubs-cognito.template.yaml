@@ -104,6 +104,9 @@ Outputs:
   CognitoUserPoolProviderUrl:
     Description: URL for the cognito provider (Issuer attribute)
     Value: !GetAtt UserPool.ProviderURL
+  CognitoDefaultUserUsername:
+    Description: Username for the Cognito User created by CognitoDefaultUser
+    Value: !GetAtt CognitoDefaultUser.Username
   CognitoDefaultUserTempPassword:
     Description: Temporary Password for the Cognito User created by CognitoDefaultUser
-    Value: !GetAtt   CognitoDefaultUser.TemporaryPassword
+    Value: !GetAtt CognitoDefaultUser.TemporaryPassword

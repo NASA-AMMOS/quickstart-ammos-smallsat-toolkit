@@ -32,7 +32,7 @@ def lambda_handler(event, context):
     password += rand_seq(string.punctuation, 1, 3)
     password += rand_seq(string.digits, 1, 3)
     password += rand_seq(string.ascii_uppercase, 3, 9)
-    password = length - len(password)
+    n = length - len(password)
     password += rand_seq(string.ascii_lowercase, n, n)
     password = "".join(password)
     
@@ -48,12 +48,12 @@ def lambda_handler(event, context):
                 TemporaryPassword = password
             )
 
-            cfn_response_from_cidp = json.dumps(cidp_response, indent=4, sort_keys=True, default=str)
-            cfn_response_from_cidp = json.loads(cfn_response_from_cidp)
-            cfn_response_from_cidp['TemporaryPassword'] = password
+            responseData = {}
+            responseData["Username"] = username
+            responseData['TemporaryPassword'] = password
 
             # Send response back with CIDP Response to CFN
-            cfnresponse.send(event, context, cfnresponse.SUCCESS, cfn_response_from_cidp)
+            cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
 
         except botocore.exceptions.ClientError as e:
             logger.error("Error: {}".format(e))
