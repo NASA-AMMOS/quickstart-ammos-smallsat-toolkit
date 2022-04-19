@@ -259,8 +259,8 @@ Resources:
               - Action:
                   - cognito-idp:DescribeUserPoolClient
                   - cognito-idp:AdminCreateUser
-                  Effect: Allow
-                  Resource: !Sub arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*
+                Effect: Allow
+                Resource: !Sub arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*
             Version: "2012-10-17"
           PolicyName: cognito-client-describe
   DeploymentHelperRole:
