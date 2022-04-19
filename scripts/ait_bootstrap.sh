@@ -93,6 +93,8 @@ cd $PROJECT_HOME/AIT-DSN
 git checkout 2.0.0
 pip install .
 
+cd $PROJECT_HOME
+
 # Copy necessary apache configs
 cp $SETUP_DIR/httpd_proxy.conf /etc/httpd/conf.d/proxy.conf
 
