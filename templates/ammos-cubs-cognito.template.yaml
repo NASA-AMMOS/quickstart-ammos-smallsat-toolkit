@@ -45,7 +45,7 @@ Resources:
           - UsingDefaultBucket
           - !Sub '${QSS3BucketName}-${AWS::Region}'
           - !Ref QSS3BucketName
-        S3Key: !Sub '${QSS3KeyPrefix}functions/packages/CognitoInitialization/lambda.zip'
+        S3Key: !Sub '${QSS3KeyPrefix}functions/packages/CognitoUserInit/lambda.zip'
       Handler: cfn_cognito_init.lambda_handler
       Role: !Ref IamRoleArn
       Runtime: python3.9

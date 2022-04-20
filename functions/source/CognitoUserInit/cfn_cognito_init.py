@@ -1,4 +1,3 @@
-from operator import length_hint
 import cfnresponse
 import boto3
 import botocore
@@ -6,7 +5,7 @@ import json
 import random
 import string
 import secrets
-import logger
+import logging
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
