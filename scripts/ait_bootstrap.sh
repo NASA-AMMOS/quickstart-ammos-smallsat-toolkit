@@ -95,6 +95,9 @@ pip install .
 
 cd $PROJECT_HOME
 
+# Make necessary DSN plugin directories
+mkdir -p $PROJECT_HOME/AIT-Core/ait/dsn/cfdp/datasink/{outgoing,incoming,tempfiles,pdusink}
+
 # Copy necessary apache configs
 cp $SETUP_DIR/httpd_proxy.conf /etc/httpd/conf.d/proxy.conf
 

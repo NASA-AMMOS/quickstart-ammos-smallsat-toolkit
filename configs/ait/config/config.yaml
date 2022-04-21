@@ -29,7 +29,7 @@ default:
 
     emitdefaults:
         filename: emitdefaults.yaml
-    # Adding AIT-DSN Plugin        
+    # Adding AIT-DSN Plugin
     dsn:
         sle:
             initiator_id: LSE
