@@ -60,4 +60,4 @@ def lambda_handler(event, context):
             cfnresponse.send(event, context, cfnresponse.FAILED, cfn_response)
     else:
         responseData = {"message": "Invalid Request Type"}
-        cfnresponse.send(event, context, cfnresponse.FAILED, )
+        cfnresponse.send(event, context, cfnresponse.FAILED, responseData)
