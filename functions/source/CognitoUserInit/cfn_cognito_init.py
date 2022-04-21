@@ -1,18 +1,31 @@
-import cfnresponse
+import logging
+import secrets
+import string
+
 import boto3
 import botocore
-import json
-import random
-import string
-import secrets
-import logging
+
+import cfnresponse
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+
 def rand_seq(seq, at_least: int, at_most: int) -> list:
     n = secrets.choice(range(at_least, at_most + 1))
     return [secrets.choice(seq) for _ in range(n)]
+
+
+def make_password(length: int) -> str:
+    length = max(length, 18)  # At least 18 chars
+    password = []
+    password += rand_seq(string.punctuation, 1, 3)
+    password += rand_seq(string.digits, 1, 3)
+    password += rand_seq(string.ascii_uppercase, 3, 9)
+    n = length - len(password)
+    password += rand_seq(string.ascii_lowercase, n, n)
+    return "".join(password)
+
 
 def lambda_handler(event, context):
     """Lambda Handler for dealing with creating a new cognito user using AWS Cognito
@@ -22,42 +35,33 @@ def lambda_handler(event, context):
         context (obj): Context manager
     """
 
-    user_pool_id = event['ResourceProperties']['UserPoolId']
-    username = 'admin'
-    
+    user_pool_id = event["ResourceProperties"]["UserPoolId"]
+    username = "admin"
+
     # Generate random word using secrets for 20 characters long
-    length = 20
-    password = []
-    password += rand_seq(string.punctuation, 1, 3)
-    password += rand_seq(string.digits, 1, 3)
-    password += rand_seq(string.ascii_uppercase, 3, 9)
-    n = length - len(password)
-    password += rand_seq(string.ascii_lowercase, n, n)
-    password = "".join(password)
-    
+    password = make_password(20)
 
-    if event['RequestType'] in ['Create', 'Delete', 'Update']:      
+    if event["RequestType"] in ["Create", "Delete", "Update"]:
         # Run in the cloud to make cognito user
-        client = boto3.client('cognito-idp') 
+        client = boto3.client("cognito-idp")
 
+        responseData = {}
+        status = cfnresponse.FAILED
         try:
-            cidp_response = client.admin_create_user(
-                UserPoolId = user_pool_id,
-                Username = username,
-                TemporaryPassword = password
+            client.admin_create_user(
+                UserPoolId=user_pool_id, Username=username, TemporaryPassword=password
             )
 
-            responseData = {}
             responseData["Username"] = username
-            responseData['TemporaryPassword'] = password
+            responseData["TemporaryPassword"] = password
 
             # Send response back with CIDP Response to CFN
-            cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+            status = cfnresponse.SUCCESS
 
-        except botocore.exceptions.ClientError as e:
-            logger.error("Error: {}".format(e))
-            cfn_response = {}
-            cfnresponse.send(event, context, cfnresponse.FAILED, cfn_response)
+        except botocore.exceptions.ClientError as error:
+            logger.error("Error: {}".format(error))
+            responseData = {"Error": error.response["Error"]}
     else:
-        responseData = {"message": "Invalid Request Type"}
-        cfnresponse.send(event, context, cfnresponse.FAILED, responseData)
+        responseData = {"Message": "Invalid Request Type"}
+
+    cfnresponse.send(event, context, status, responseData)
