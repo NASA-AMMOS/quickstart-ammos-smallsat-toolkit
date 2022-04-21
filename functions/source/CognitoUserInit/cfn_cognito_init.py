@@ -41,12 +41,12 @@ def lambda_handler(event, context):
     # Generate random word using secrets for 20 characters long
     password = make_password(20)
 
-    if event["RequestType"] in ["Create", "Delete", "Update"]:
+    responseData = {}
+    status = cfnresponse.FAILED
+    if event["RequestType"] == "Create":
         # Run in the cloud to make cognito user
         client = boto3.client("cognito-idp")
 
-        responseData = {}
-        status = cfnresponse.FAILED
         try:
             client.admin_create_user(
                 UserPoolId=user_pool_id, Username=username, TemporaryPassword=password
@@ -61,6 +61,9 @@ def lambda_handler(event, context):
         except botocore.exceptions.ClientError as error:
             logger.error("Error: {}".format(error))
             responseData = {"Error": error.response["Error"]}
+    elif event["RequestType"] in ["Delete", "Update"]:
+        # No action needs to be taken for delete or update events
+        status = cfnresponse.SUCCESS
     else:
         responseData = {"Message": "Invalid Request Type"}
 
