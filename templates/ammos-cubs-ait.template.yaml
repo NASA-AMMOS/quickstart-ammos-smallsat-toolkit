@@ -31,7 +31,7 @@ Parameters:
     Type: Number
     Default: 604800  # One day
     MinValue: 60
-    MaxValue: 604800 # One day
+    MaxValue: 604800
   IamRoleName:
     Description: Name of the pre-deployed IAM Role to use with the AIT Server
     Type: String
