@@ -19,7 +19,7 @@ Parameters:
   AccessSgID:
     Description: (Optional) ID of pre-configured Security Group to control access to ALB
     Type: AWS::EC2::SecurityGroup::Id
-    Default: ''
+    Default: AWS::NoValue
   HostedZoneID:
     Description: ID of Route53 Hosted Zone in which to create records for discovery
     Type: AWS::Route53::HostedZone::Id

@@ -215,7 +215,7 @@ Parameters:
     Description: (Optional) ID of the Route 53 hosted-zone domain. If you fill in both FQDN and HostedZoneID, this deployment generates an ACM certificate.
     Type: AWS::Route53::HostedZone::Id
     MaxLength: 32
-    Default: ''
+    Default: AWS::NoValue
   FQDN:
     Description: URL to use for the project-resources root.
     Type: String
@@ -235,31 +235,31 @@ Parameters:
   VpcId:
     Description: (Optional) If you're deploying into an existing VPC, fill in the VPC ID.
     Type: AWS::EC2::VPC::Id
-    Default: ''
+    Default: AWS::NoValue
   PublicSubnet1ID:
     Description: (Optional) If you're deploying into an existing VPC, fill in the ID of the public subnet in Availability Zone 1.
     Type: AWS::EC2::Subnet::Id
-    Default: ''
+    Default: AWS::NoValue
   PublicSubnet2ID:
     Description: (Optional) If you're deploying into an existing VPC, fill in the ID of the public subnet in Availability Zone 2.
     Type: AWS::EC2::Subnet::Id
-    Default: ''
+    Default: AWS::NoValue
   PrivateSubnet1AID:
     Description: (Optional) If you're deploying into an existing VPC, fill in the ID of the private subnet in Availability Zone 1.
     Type: AWS::EC2::Subnet::Id
-    Default: ''
+    Default: AWS::NoValue
   PrivateSubnet2AID:
     Description: (Optional) If you're deploying into an existing VPC, fill in the ID of the private subnet in Availability Zone 2.
     Type: AWS::EC2::Subnet::Id
-    Default: ''
+    Default: AWS::NoValue
   PrivateSubnet3AID:
     Description: (Optional) If you're deploying into an existing VPC, fill in the ID of the private subnet in Availability Zone 3.
     Type: AWS::EC2::Subnet::Id
-    Default: ''
+    Default: AWS::NoValue
   AccessSgID:
     Description: (Optional) If you're deploying into an existing VPC, fill in the ID of the preconfigured security group to control access to the Application Load Balancer.
     Type: AWS::EC2::SecurityGroup::Id
-    Default: ''
+    Default: AWS::NoValue
   DeployIam:
     Description: Allow the QuickStart to deploy the required IAM Roles on your behalf. Otherwise, you will need to pre-deploy
       these IAM resources before launching the QuickStart; see the Deployment Guide for more details
