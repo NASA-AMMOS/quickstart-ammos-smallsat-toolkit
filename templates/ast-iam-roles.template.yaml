@@ -204,7 +204,7 @@ Resources:
                   - elasticfilesystem:ClientMount
                   - elasticfilesystem:ClientWrite
                   - elasticfilesystem:ClientRootAccess
-                Resource: !Sub 'arn:aws:elasticfilesystem:${AWS::Partition}:${AWS::AccountId}:file-system/*'
+                Resource: !Sub 'arn:${AWS::Partition}:elasticfilesystem:${AWS::Region}:${AWS::AccountId}:file-system/*'
   EditorServerRole:
     Type: AWS::IAM::Role
     Properties:
