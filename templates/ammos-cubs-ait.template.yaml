@@ -219,6 +219,20 @@ Resources:
           chmod +x /usr/bin/jq
           }
 
+          function bootstrap_data(){
+          # Adding functionality to mount an EFS
+          yum update -y
+          yum install -y curl nfs-common amazon-efs-utils
+          pip3 install botocore
+          DIR_TGT=/mnt/efs/
+          EC2_REGION=${AWS::Region}
+          EFS_FILE_SYSTEM_ID=${FileSystem}
+          mkdir -p $DIR_TGT
+          DIR_SRC=$EFS_FILE_SYSTEM_ID.efs.$EC2_REGION.amazonaws.com
+          echo "Mounting $EFS_FILE_SYSTEM_ID via ${RootAccessPoint}"
+          mount -t efs -o tls,accesspoint=${RootAccessPoint} $EFS_FILE_SYSTEM_ID:/ $DIR_TGT
+          }
+
           function install_ait_and_dependents(){
           # Set variables for system install
           PROJECT_HOME=/home/ec2-user
@@ -345,20 +359,10 @@ Resources:
           }
 
           boostrap_aws_stuff
+          bootstrap_data
           bootstrap_ait
           install_ait_and_dependents
 
-          # Adding functionality to mount an EFS
-          yum update -y
-          yum install -y curl nfs-common amazon-efs-utils
-          pip3 install botocore
-          DIR_TGT=/mnt/efs/
-          EC2_REGION=${AWS::Region}
-          EFS_FILE_SYSTEM_ID=${FileSystem}
-          mkdir -p $DIR_TGT
-          DIR_SRC=$EFS_FILE_SYSTEM_ID.efs.$EC2_REGION.amazonaws.com
-          echo "Mounting $EFS_FILE_SYSTEM_ID via ${RootAccessPoint}"
-          mount -t efs -o tls,accesspoint=${RootAccessPoint} $EFS_FILE_SYSTEM_ID:/ $DIR_TGT
 
   AitWebTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
