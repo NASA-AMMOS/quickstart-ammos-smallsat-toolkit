@@ -1,6 +1,5 @@
 #!/bin/bash
 exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
-
 function exitTrap(){
 exitCode=$?
 /opt/aws/bin/cfn-signal \
@@ -14,21 +13,30 @@ CONFIG_BUCKET_NAME=${ConfigBucketName}
 function boostrap_aws_stuff(){
 # rpms and stuff
 yum install -y -q python3 wget unzip
+wget -nv https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz
 wget -nv https://s3.amazonaws.com/amazoncloudwatch-agent/redhat/amd64/latest/amazon-cloudwatch-agent.rpm
+curl  "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip " -o  "awscliv2.zip"
+pip3 install aws-cfn-bootstrap-py3-latest.tar.gz
 
+# directories
+mkdir -p /opt/aws/bin
+ln -s /usr/local/bin/cfn-* /opt/aws/bin
 
 # Cloudwatch and SSM agent
 sudo rpm -U ./amazon-cloudwatch-agent.rpm
 yum install -y -q https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm
 
+# AWS CLI
+unzip -qq awscliv2.zip
+./aws/install > /dev/null && echo "Installed AWS CLI"
 }
 
 function bootstrap_ait(){
 # Install basic system tools needed for AIT Server
 # install python 3.7
-yum install -y @development gcc openssl-devel bzip2-devel libffi-devel sqlite-devel httpd mod_ssl vim policycoreutils-python-utils
+yum install -y -q @development gcc openssl-devel bzip2-devel libffi-devel sqlite-devel httpd mod_ssl vim policycoreutils-python-utils
 cd /opt
-wget https://www.python.org/ftp/python/3.7.9/Python-3.7.9.tgz
+wget -nv https://www.python.org/ftp/python/3.7.9/Python-3.7.9.tgz
 tar xzf Python-3.7.9.tgz
 cd Python-3.7.9
 ./configure --enable-optimizations --enable-loadable-sqlite-extensions > /dev/null && echo "Configured Python 3.7"
@@ -37,6 +45,34 @@ make altinstall > /dev/null && echo "Installed Python 3.7"
 systemctl enable httpd
 curl -SL https://github.com/stedolan/jq/relepermanently/deleteases/download/jq-1.5/jq-linux64  -o /usr/bin/jq
 chmod +x /usr/bin/jq
+}
+
+function bootstrap_data(){
+# Adding functionality to mount an EFS
+echo "Bootstrapping EFS and Mounting it"
+sudo yum -y update  
+sudo yum -y install nfs-utils
+
+# Installing EFS Amazon Utilss
+echo "Downloading and installing Amazon EFS Utils"
+sudo yum -y install git rpm-build make
+sudo git clone https://github.com/aws/efs-utils
+cd efs-utils
+sudo make rpm
+sudo yum -y install build/amazon-efs-utils*rpm
+# cd back to root dir
+cd /
+
+# Install botocore libraries
+pip3 install botocore
+# Define mount location and efs id
+DIR_TGT=/mnt/efs/
+EC2_REGION=${AWS::Region}
+EFS_FILE_SYSTEM_ID=${FileSystem}
+echo "Mounting directory to EFS: $EFS_FILE_SYSTEM_ID"
+mkdir -p $DIR_TGT
+echo "Mounting $EFS_FILE_SYSTEM_ID to $DIR_TGT"
+sudo mount -t efs  $EFS_FILE_SYSTEM_ID $DIR_TGT
 }
 
 function install_ait_and_dependents(){
@@ -72,9 +108,8 @@ workon ait
 
 # Pull assets, config, and secrets from s3/sm
 mkdir -p $SETUP_DIR
-/usr/local/aws-cli/v2/current/bin/aws --region $AWS_REGION s3 sync s3://$CONFIG_BUCKET_NAME/ait/ $SETUP_DIR/
-/usr/local/aws-cli/v2/current/bin/aws --region $AWS_REGION s3 cp s3://"$CONFIG_BUCKET_NAME"/modules/openmct-static.tgz - | tar -xz -C /var/www/html
-
+/usr/local/aws-cli/v2/current/bin/aws --region $AWS_REGION s3 sync s3://$CONFIG_BUCKET_NAME/configs/ait/ $SETUP_DIR/
+/usr/local/aws-cli/v2/current/bin/aws --region $AWS_REGION s3 cp s3://"$CONFIG_BUCKET_NAME"/configs/modules/openmct-static.tgz - | tar -xz -C /var/www/html
 
 # Install open-source AIT components
 git clone https://github.com/NASA-AMMOS/AIT-Core.git $PROJECT_HOME/AIT-Core
@@ -155,11 +190,6 @@ systemctl start httpd
 
 # Configure and start the CloudWatch Agent
 mv $SETUP_DIR/cloudwatch-agent-ait.json /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
-
-# Inject ProjectName from Cloudformation into cloudwatch agent files
-mv /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json{,.bak}
-sed 's/<PROJECT_NAME>/${ProjectName}/g' /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json.bak > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
-
 /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
     -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
 
@@ -171,5 +201,6 @@ deactivate
 }
 
 boostrap_aws_stuff
+bootstrap_data
 bootstrap_ait
 install_ait_and_dependents
