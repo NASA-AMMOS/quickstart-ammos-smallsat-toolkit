@@ -104,8 +104,7 @@ Resources:
     Type: AWS::EFS::MountTarget
     Properties:
       FileSystemId: !Ref FileSystem
-      SubnetId: 
-        - !Select [ 0, !Ref 'PrivateSubnetIds']
+      SubnetId: "subnet-03a1ec6be37d72106"
       SecurityGroups:
       - Ref: EfsSecurityGroup
       
@@ -221,16 +220,30 @@ Resources:
 
           function bootstrap_data(){
           # Adding functionality to mount an EFS
-          yum update -y
-          yum install -y curl nfs-common amazon-efs-utils
+          echo "Bootstrapping EFS and Mounting it"
+          sudo yum -y update  
+          sudo yum -y install nfs-utils
+
+          # Installing EFS Amazon Utilss
+          echo "Downloading and installing Amazon EFS Utils"
+          sudo yum -y install git rpm-build make
+          sudo git clone https://github.com/aws/efs-utils
+          cd efs-utils
+          sudo make rpm
+          sudo yum -y install build/amazon-efs-utils*rpm
+          # cd back to root dir
+          cd /
+
+          # Install botocore libraries
           pip3 install botocore
+          # Define mount location and efs id
           DIR_TGT=/mnt/efs/
           EC2_REGION=${AWS::Region}
           EFS_FILE_SYSTEM_ID=${FileSystem}
+          echo "Mounting directory to EFS: $EFS_FILE_SYSTEM_ID"
           mkdir -p $DIR_TGT
-          DIR_SRC=$EFS_FILE_SYSTEM_ID.efs.$EC2_REGION.amazonaws.com
-          echo "Mounting $EFS_FILE_SYSTEM_ID via ${RootAccessPoint}"
-          mount -t efs -o tls,accesspoint=${RootAccessPoint} $EFS_FILE_SYSTEM_ID:/ $DIR_TGT
+          echo "Mounting $EFS_FILE_SYSTEM_ID to $DIR_TGT"
+          sudo mount -t efs  $EFS_FILE_SYSTEM_ID $DIR_TGT
           }
 
           function install_ait_and_dependents(){
