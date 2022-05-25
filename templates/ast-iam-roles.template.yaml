@@ -252,6 +252,7 @@ Resources:
   LambdaEfsRole:
     Type: 'AWS::IAM::Role'
     Properties:
+      RoleName: !Sub ${ProjectName}-LambdaEfsRole
       Description: !Sub IAM Role for Lambda execution which copies and deploys AIT server - ${ProjectName}
       Path: !If [RolePathProvided, !Ref RolePath, !Ref AWS::NoValue]
       PermissionsBoundary:

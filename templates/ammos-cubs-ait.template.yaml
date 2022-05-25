@@ -122,6 +122,31 @@ Resources:
           Permissions: "777"
         Path: "/efs"
 
+  AitEfsBootstrap:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt CopyAitDeploymentEfs.Arn
+  CopyAitDeploymentEfs:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: copy_ait_deployment.handler
+      Code:
+        S3Bucket: !If
+          - UsingDefaultBucket
+          - !Sub '${QSS3BucketName}-${AWS::Region}'
+          - !Ref QSS3BucketName
+        S3Key: !Sub '${QSS3KeyPrefix}functions/packages/CopyAitDeployment/lambda.zip'
+      Description: Bootstrap an EFS Filesystem with the files needed for the Aerie Deployment
+      MemorySize: 128
+      Timeout: 180
+      Role:
+        Fn::ImportValue: !Sub '${ProjectName}-LambdaEfsRoleArn'
+      Runtime: python3.8
+      VpcConfig:
+        SecurityGroupIds:
+        - !Ref EfsSecurityGroup
+        SubnetIds: !Ref PrivateSubnetIds
+
   AitServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -502,3 +527,5 @@ Outputs:
     Value: !If [IsGovCloud, "yes", "no"]
   AitSecurityGroupId:
     Value: !GetAtt 'AitServerSecurityGroup.GroupId'
+  AitEfsBootstrap:
+    Value: !GetAtt 'AitEfsBootstrap.LambdaTest'
