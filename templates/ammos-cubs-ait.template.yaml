@@ -288,12 +288,13 @@ Resources:
 
           function install_ait_and_dependents(){
           # Set variables for system install
-          PROJECT_HOME=/home/ec2-user
-          SETUP_DIR=/home/ec2-user/setup
+          PROJECT_HOME=/mnt/ait
+          SETUP_DIR=/mnt/ait/setup
           USER=ec2-user
           GROUP=ec2-user
           AWS_REGION=${AWS::Region}
           python3.7 -m pip install virtualenv virtualenvwrapper
+          mkdir $PROJECT_HOME
           cd $PROJECT_HOME
 
           # Prepare python environment for AIT work
