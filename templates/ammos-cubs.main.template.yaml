@@ -505,6 +505,8 @@ Resources:
         CognitoClientID: !GetAtt AmmosCubsALBStack.Outputs.CognitoClientId
         CognitoClientSecret: !GetAtt AmmosCubsALBStack.Outputs.CognitoClientSecret
         CognitoProviderUrl: !GetAtt AmmosCognitoStack.Outputs.CognitoUserPoolProviderUrl
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Ref QSS3KeyPrefix
         ALBHttpsListenerArn: !GetAtt AmmosCubsALBStack.Outputs.HttpsListenerArn
         AvailabilityZone: !Select [0, !Ref 'AvailabilityZones']
         ListenerCertificateArn: !If
