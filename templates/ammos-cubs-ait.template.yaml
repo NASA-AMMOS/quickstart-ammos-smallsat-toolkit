@@ -161,6 +161,11 @@ Resources:
         SecurityGroupIds:
         - !Ref EfsSecurityGroup
         SubnetIds: !Ref PrivateSubnetIds
+      FileSystemConfigs:
+        - Arn: !GetAtt RootAccessPoint
+          LocalMountPath: "/mnt/efs/"
+      DependsOn: "MountTargetPublicA" 
+
 
   AitServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
