@@ -77,8 +77,8 @@ sudo mount -t efs  $EFS_FILE_SYSTEM_ID $DIR_TGT
 
 function install_ait_and_dependents(){
 # Set variables for system install
-PROJECT_HOME=/home/ec2-user
-SETUP_DIR=/home/ec2-user/setup
+PROJECT_HOME=/mnt/efs/ait
+SETUP_DIR=/mnt/efs/ait/setup
 USER=ec2-user
 GROUP=ec2-user
 AWS_REGION=${AWS::Region}
@@ -106,32 +106,26 @@ EOM
 mkvirtualenv ait
 workon ait
 
-# Pull assets, config, and secrets from s3/sm
+# Pull assets, config, and secrets from s3/sm (NEEDS TO MOVE)
 mkdir -p $SETUP_DIR
 /usr/local/aws-cli/v2/current/bin/aws --region $AWS_REGION s3 sync s3://$CONFIG_BUCKET_NAME/configs/ait/ $SETUP_DIR/
 /usr/local/aws-cli/v2/current/bin/aws --region $AWS_REGION s3 cp s3://"$CONFIG_BUCKET_NAME"/configs/modules/openmct-static.tgz - | tar -xz -C /var/www/html
 
 # Install open-source AIT components
-git clone https://github.com/NASA-AMMOS/AIT-Core.git $PROJECT_HOME/AIT-Core
 cd $PROJECT_HOME/AIT-Core/
 git checkout 2.3.5
 pip install .
 /usr/bin/cp -r $SETUP_DIR/config $PROJECT_HOME/AIT-Core
 
-git clone https://github.com/NASA-AMMOS/AIT-GUI.git $PROJECT_HOME/AIT-GUI
 cd $PROJECT_HOME/AIT-GUI/
 git checkout 2.3.1
 pip install .
 
-git clone https://github.com/NASA-AMMOS/AIT-DSN.git $PROJECT_HOME/AIT-DSN
 cd $PROJECT_HOME/AIT-DSN
 git checkout 2.0.0
 pip install .
 
 cd $PROJECT_HOME
-
-# Make necessary DSN plugin directories
-mkdir -p $PROJECT_HOME/AIT-Core/ait/dsn/cfdp/datasink/{outgoing,incoming,tempfiles,pdusink}
 
 # Copy necessary apache configs
 cp $SETUP_DIR/httpd_proxy.conf /etc/httpd/conf.d/proxy.conf
@@ -147,7 +141,6 @@ sed 's/<CFN_FQDN>/${FQDN}/g' /var/www/html/openmct/index.html.bak > /var/www/htm
 rm /var/www/html/openmct/index.html.bak
 
 # Install InfluxDB and data plugin
-curl https://repos.influxdata.com/rhel/6/amd64/stable/influxdb-1.2.4.x86_64.rpm -o $SETUP_DIR/influxdb-1.2.4.x86_64.rpm
 yum localinstall -y $SETUP_DIR/influxdb-1.2.4.x86_64.rpm
 
 pip install influxdb
