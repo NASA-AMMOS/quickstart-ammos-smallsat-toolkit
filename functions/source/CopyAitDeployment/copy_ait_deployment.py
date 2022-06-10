@@ -6,6 +6,7 @@ import pathlib
 import urllib.request
 from urllib.request import urlretrieve
 import tarfile
+import boto3
 
 
 def download_tar_gz(url, path):
@@ -23,6 +24,19 @@ def download_file(url, filename):
     urlretrieve(url, filename)
 
 
+def download_directory_from_s3(bucket_name, remote_path, dir_path):
+    """Funciton to downlaod a directory from s3"""
+    s3_resource = boto3.resource("s3")
+    bucket = s3_resource.Bucket(bucket_name)
+
+    # Download each of the files
+    for obj in bucket.objects.filter(Prefix=remote_path):
+        if not os.path.exists(os.path.dirname(obj.key)):
+            os.makedirs(os.path.dirname(obj.key))
+        dir_path = dir_path + str(obj.key)
+        bucket.download_file(obj.key, obj.key, dir_path)
+
+
 def handler(event, context):
     """Lambda Handler for dealing with creating a new cognito user using AWS Cognito
 
@@ -34,7 +48,8 @@ def handler(event, context):
     print(json.dumps(event, default=str))
     responseData = {}
     status = cfnresponse.FAILED
-    dirpath = "/tmp"
+    dir_path = "/tmp"
+    BUCKET_NAME = "ast-sandbox-config"
 
     if event["RequestType"] == "Create":
         responseData["LambaTest"] = "Create"
@@ -48,7 +63,7 @@ def handler(event, context):
         ait_url = (
             "https://github.com/NASA-AMMOS/AIT-Core/archive/refs/tags/2.3.5.tar.gz"
         )
-        download_tar_gz(ait_url, path=dirpath)
+        download_tar_gz(ait_url, path=dir_path)
         shutil.copytree(
             "/tmp/AIT-Core-2.3.5", "/mnt/efs/ait/AIT-Core", dirs_exist_ok=True
         )
@@ -59,7 +74,7 @@ def handler(event, context):
         pathlib.Path("/mnt/efs/ait/AIT-GUI/").mkdir(parents=True, exist_ok=True)
         # Download and place into AIT
         ait_url = "https://github.com/NASA-AMMOS/AIT-GUI/archive/refs/tags/2.3.1.tar.gz"
-        download_tar_gz(ait_url, path=dirpath)
+        download_tar_gz(ait_url, path=dir_path)
         shutil.copytree(
             "/tmp/AIT-GUI-2.3.1", "/mnt/efs/ait/AIT-GUI", dirs_exist_ok=True
         )
@@ -70,7 +85,7 @@ def handler(event, context):
         pathlib.Path("/mnt/efs/ait/AIT-DSN/").mkdir(parents=True, exist_ok=True)
         # Download and place into AIT
         ait_url = "https://github.com/NASA-AMMOS/AIT-DSN/archive/refs/tags/2.0.0.tar.gz"
-        download_tar_gz(ait_url, path=dirpath)
+        download_tar_gz(ait_url, path=dir_path)
         shutil.copytree(
             "/tmp/AIT-DSN-2.0.0", "/mnt/efs/ait/AIT-DSN", dirs_exist_ok=True
         )
@@ -101,8 +116,27 @@ def handler(event, context):
             "/mnt/efs/ait/setup/influxdb-1.2.4.x86_64.rpm",
         )
 
-        # Clean up
-        pathlib.Path.rmdir("/tmp")
+        ## Configuration files from S3
+        print("Downloading CONFIG files")
+        s3 = boto3.client("s3")
+        bucket = s3.list_objects(Bucket=BUCKET_NAME)
+        for content in bucket["Contents"]:
+            key = content["Key"]
+            filename = f"/tmp/{key}"
+            path, _ = os.path.split(filename)
+            # Make directories
+            pathlib.Path(path).mkdir(parents=True, exist_ok=True)
+            print(f"Downloading {key} into {filename}")
+
+            # Download file into relavent paths
+            s3.download_file(BUCKET_NAME, key, filename)
+
+        # Copy configuration files into mounted EFS
+        shutil.copytree(
+            "/tmp/configs", "/mnt/efs/ait/setup/configs", dirs_exist_ok=True
+        )
+
+        print("All downloads completed...")
 
     elif event["RequestType"] in ["Delete", "Update"]:
         # No action needs to be taken for delete or update events
