@@ -155,7 +155,7 @@ Resources:
       Description: Bootstrap an EFS Filesystem with the files needed for the Aerie Deployment
       MemorySize: 128
       Timeout: 180
-      Role: 'arn:aws-us-gov:iam::016915823617:role/am-a2c/ast-sandbox-iam-LambdaEfsRole-1G70J68Y9KDAO'
+      Role: 'arn:aws-us-gov:iam::016915823617:role/account-managed/lambda/VK-MyBasicLambdaExecution'
       Runtime: python3.8
       VpcConfig:
         SecurityGroupIds:
@@ -219,12 +219,12 @@ Resources:
           function exitTrap(){
           exitCode=$?
           /opt/aws/bin/cfn-signal \
-          --stack ${AWS::StackName} \
+          --stack ast-sandbox-main-AmmosCubsAITStack-1BQ7JZPVM3HIB \
           --resource AitAutoScalingGroup \
-          --region ${AWS::Region} -e $exitCode || echo 'Failed to send Cloudformation Signal'
+          --region us-gov-west-1 -e $exitCode || echo 'Failed to send Cloudformation Signal'
           }
           trap exitTrap EXIT
-          CONFIG_BUCKET_NAME=${ConfigBucketName}
+          CONFIG_BUCKET_NAME=ast-sandbox-config
 
           function boostrap_aws_stuff(){
           # rpms and stuff
@@ -283,7 +283,7 @@ Resources:
           pip3 install botocore
           # Define mount location and efs id
           DIR_TGT=/mnt/efs/
-          EC2_REGION=${AWS::Region}
+          EC2_REGION=us-gov-west-1
           EFS_FILE_SYSTEM_ID=${FileSystem}
           echo "Mounting directory to EFS: $EFS_FILE_SYSTEM_ID"
           mkdir -p $DIR_TGT
@@ -293,13 +293,12 @@ Resources:
 
           function install_ait_and_dependents(){
           # Set variables for system install
-          PROJECT_HOME=/mnt/ait
-          SETUP_DIR=/mnt/ait/setup
+          PROJECT_HOME=/mnt/efs/ait # CHANGE THIS TO MOUNTED DIRECTORY
+          SETUP_DIR=/mnt/efs/ait/setup # CHANGE THIS TO MOUNTED SETUP DIRECTORY
           USER=ec2-user
           GROUP=ec2-user
-          AWS_REGION=${AWS::Region}
+          AWS_REGION=us-gov-west-1
           python3.7 -m pip install virtualenv virtualenvwrapper
-          mkdir $PROJECT_HOME
           cd $PROJECT_HOME
 
           # Prepare python environment for AIT work
@@ -324,23 +323,18 @@ Resources:
           workon ait
 
           # Pull assets, config, and secrets from s3/sm
-          mkdir -p $SETUP_DIR
-          /usr/local/aws-cli/v2/current/bin/aws --region $AWS_REGION s3 sync s3://$CONFIG_BUCKET_NAME/configs/ait/ $SETUP_DIR/
           /usr/local/aws-cli/v2/current/bin/aws --region $AWS_REGION s3 cp s3://"$CONFIG_BUCKET_NAME"/configs/modules/openmct-static.tgz - | tar -xz -C /var/www/html
 
           # Install open-source AIT components
-          git clone https://github.com/NASA-AMMOS/AIT-Core.git $PROJECT_HOME/AIT-Core
           cd $PROJECT_HOME/AIT-Core/
           git checkout 2.3.5
           pip install .
           /usr/bin/cp -r $SETUP_DIR/config $PROJECT_HOME/AIT-Core
 
-          git clone https://github.com/NASA-AMMOS/AIT-GUI.git $PROJECT_HOME/AIT-GUI
           cd $PROJECT_HOME/AIT-GUI/
           git checkout 2.3.1
           pip install .
 
-          git clone https://github.com/NASA-AMMOS/AIT-DSN.git $PROJECT_HOME/AIT-DSN
           cd $PROJECT_HOME/AIT-DSN
           git checkout 2.0.0
           pip install .
@@ -355,16 +349,15 @@ Resources:
 
           # Inject FQDN from Cloudformation for proper virtual host configuration
           mv /etc/httpd/conf.d/proxy.conf{,.bak}
-          sed 's/<CFN_FQDN>/${FQDN}/g' /etc/httpd/conf.d/proxy.conf.bak > /etc/httpd/conf.d/proxy.conf
+          sed 's/<CFN_FQDN>/ammos-cubs-alb.cld.jpl.nasa.gov/g' /etc/httpd/conf.d/proxy.conf.bak > /etc/httpd/conf.d/proxy.conf
           rm /etc/httpd/conf.d/proxy.conf.bak
 
           # Inject FQDN from Cloudformation into OpenMCT file
           mv /var/www/html/openmct/index.html{,.bak}
-          sed 's/<CFN_FQDN>/${FQDN}/g' /var/www/html/openmct/index.html.bak > /var/www/html/openmct/index.html
+          sed 's/<CFN_FQDN>/ammos-cubs-alb.cld.jpl.nasa.gov/g' /var/www/html/openmct/index.html.bak > /var/www/html/openmct/index.html
           rm /var/www/html/openmct/index.html.bak
 
           # Install InfluxDB and data plugin
-          curl https://repos.influxdata.com/rhel/6/amd64/stable/influxdb-1.2.4.x86_64.rpm -o $SETUP_DIR/influxdb-1.2.4.x86_64.rpm
           yum localinstall -y $SETUP_DIR/influxdb-1.2.4.x86_64.rpm
 
           pip install influxdb
@@ -418,9 +411,10 @@ Resources:
           }
 
           boostrap_aws_stuff
-          bootstrap_data
           bootstrap_ait
-          install_ait_and_dependents
+          bootstrap_data
+
+          # install_ait_and_dependents
 
 
   AitWebTargetGroup:
