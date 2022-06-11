@@ -91,18 +91,9 @@ def handler(event, context):
         )
 
         # Build necessary folders for the AIT DSN plugin
-        pathlib.Path("/mnt/efs/ait/AIT-Core/ait/dsn/cfdp/datasink/outgoing").mkdir(
-            parents=True, exist_ok=True
-        )
-        pathlib.Path("/mnt/efs/ait/AIT-Core/ait/dsn/cfdp/datasink/incoming").mkdir(
-            parents=True, exist_ok=True
-        )
-        pathlib.Path("/mnt/efs/ait/AIT-Core/ait/dsn/cfdp/datasink/tempfiles").mkdir(
-            parents=True, exist_ok=True
-        )
-        pathlib.Path("/mnt/efs/ait/AIT-Core/ait/dsn/cfdp/datasink/pdusink").mkdir(
-            parents=True, exist_ok=True
-        )
+        datasink_dir = pathlib.Path("/mnt/efs/ait/AIT-Core/ait/dsn/cfdp/datasink/outgoing")
+        for dir in ["outgoing", "incoming", "tempfiles", "pdusink"]:
+           (datasink_dir / dir).mkdir(parents=True, exist_ok=True)
 
         # Download influx dB
         print("Downloading Influx DB RPM")
