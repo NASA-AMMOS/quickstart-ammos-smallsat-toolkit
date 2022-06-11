@@ -157,15 +157,16 @@ Resources:
       Timeout: 180
       Role: 'arn:aws-us-gov:iam::016915823617:role/account-managed/lambda/VK-MyBasicLambdaExecution'
       Runtime: python3.8
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref ConfigBucketName
       VpcConfig:
         SecurityGroupIds:
         - !Ref EfsSecurityGroup
         SubnetIds: !Ref PrivateSubnetIds
       FileSystemConfigs:
-        - Arn: !GetAtt RootAccessPoint
+        - Arn: !GetAtt 'RootAccessPoint.Arn'
           LocalMountPath: "/mnt/efs/"
-      DependsOn: "MountTargetPublicA" 
-
 
   AitServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -346,12 +347,12 @@ Resources:
 
           # Inject FQDN from Cloudformation for proper virtual host configuration
           mv /etc/httpd/conf.d/proxy.conf{,.bak}
-          sed 's/<CFN_FQDN>/ammos-cubs-alb.cld.jpl.nasa.gov/g' /etc/httpd/conf.d/proxy.conf.bak > /etc/httpd/conf.d/proxy.conf
+          sed 's/<CFN_FQDN>/${FQDN}/g' /etc/httpd/conf.d/proxy.conf.bak > /etc/httpd/conf.d/proxy.conf
           rm /etc/httpd/conf.d/proxy.conf.bak
 
           # Inject FQDN from Cloudformation into OpenMCT file
           mv /var/www/html/openmct/index.html{,.bak}
-          sed 's/<CFN_FQDN>/ammos-cubs-alb.cld.jpl.nasa.gov/g' /var/www/html/openmct/index.html.bak > /var/www/html/openmct/index.html
+          sed 's/<CFN_FQDN>/${FQDN}/g' /var/www/html/openmct/index.html.bak > /var/www/html/openmct/index.html
           rm /var/www/html/openmct/index.html.bak
 
           # Install InfluxDB and data plugin

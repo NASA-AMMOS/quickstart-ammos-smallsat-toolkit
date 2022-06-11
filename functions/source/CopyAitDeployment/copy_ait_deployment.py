@@ -49,7 +49,7 @@ def handler(event, context):
     responseData = {}
     status = cfnresponse.FAILED
     dir_path = "/tmp"
-    BUCKET_NAME = "ast-sandbox-config"
+    BUCKET_NAME = os.getenv("ConfigBucketName")
 
     if event["RequestType"] == "Create":
         responseData["LambaTest"] = "Create"
