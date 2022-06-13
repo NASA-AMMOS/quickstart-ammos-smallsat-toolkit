@@ -52,10 +52,10 @@ def handler(event, context):
     responseData = {}
     status = cfnresponse.FAILED
     dir_path = "/tmp"
-    BUCKET_NAME = event["ResourceProperties"]["BucketName"]
 
     if event["RequestType"] == "Create":
         responseData["RequestType"] = "Create"
+        BUCKET_NAME = event["ResourceProperties"]["BucketName"]
         ## AIT Core
         # Build directory AIT core directory
         logging.info("Downloading AIT-Core")
