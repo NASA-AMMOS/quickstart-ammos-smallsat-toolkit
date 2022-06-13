@@ -167,7 +167,7 @@ Resources:
         SubnetIds: !Ref PrivateSubnetIds
       FileSystemConfigs:
         - Arn: !GetAtt 'RootAccessPoint.Arn'
-          LocalMountPath: "/mnt/efs/"
+          LocalMountPath: "/mnt/efs"
 
   AitServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
