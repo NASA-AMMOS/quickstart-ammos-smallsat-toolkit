@@ -207,7 +207,7 @@ Resources:
         - DeviceName: /dev/sda1
           Ebs:
             DeleteOnTermination: true
-            VolumeSize: 
+            VolumeSize: 64
       IamInstanceProfile: !Ref 'AitAutoScalingGroupInstanceProfile'
       ImageId: !FindInMap
         - AWSAMIRegionMap
