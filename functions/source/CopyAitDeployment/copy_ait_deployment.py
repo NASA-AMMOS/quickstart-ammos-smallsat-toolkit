@@ -10,7 +10,8 @@ import boto3
 import logging
 
 # Setup basic configuration for logging
-logging.basicConfig(encoding='utf-8', level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 # Initite S3 Resource
 s3_resource = boto3.resource("s3")
@@ -23,10 +24,10 @@ def download_tar_gz(url, path):
     tar = tarfile.open(fileobj=filehandle, mode="r|gz")
     tar.extractall(path)
     tar.close()
-    logging.info(f"File from {url} downloaded into {path}")
+    logger.info("File from %s downloaded from %s", url, path)
 
 def download_directory_from_s3(bucket_name, remote_path, dir_path):
-    """Funciton to downlaod a directory from s3"""
+    """Function to download a directory from s3"""
     bucket = s3_resource.Bucket(bucket_name)
     # Download each of the files
     for obj in bucket.objects.filter(Prefix=remote_path):
