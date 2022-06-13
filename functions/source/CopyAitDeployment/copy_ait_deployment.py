@@ -1,4 +1,3 @@
-from asyncio.log import logger
 import cfnresponse
 import json
 import os
@@ -31,12 +30,15 @@ def download_directory_from_s3(bucket_name, remote_path, dir_path):
     bucket = s3_resource.Bucket(bucket_name)
     # Download each of the files
     for obj in bucket.objects.filter(Prefix=remote_path):
+        # Check if the path already exists locally on the lambda file system
         if not os.path.exists(os.path.dirname(obj.key)):
             logger.info(f"Creating directory {os.path.dirname(obj.key)}")
             pathlib.Path(os.path.dirname(obj.key)).mkdir(parents=True, exist_ok=True)
-        dir_path = dir_path + str(obj.key)
-        bucket.download_file(obj.key, obj.key, dir_path)
-
+            # Check if the files exist on the EFS system
+            efs_path = "/mnt/efs/" + os.path.dirname(obj.key)
+            if not os.path.exists(efs_path):
+                dir_path = dir_path + str(obj.key)
+                bucket.download_file(obj.key, obj.key, dir_path)
 
 def handler(event, context):
     """Lambda Handler for dealing with bootstrapping EFS and downloading dependencies for running the AIT server
@@ -50,11 +52,10 @@ def handler(event, context):
     responseData = {}
     status = cfnresponse.FAILED
     dir_path = "/tmp"
-    BUCKET_NAME = os.getenv("ConfigBucketName")
+    BUCKET_NAME = event["ResourceProperties"]["BucketName"]
 
     if event["RequestType"] == "Create":
         responseData["RequestType"] = "Create"
-
         ## AIT Core
         # Build directory AIT core directory
         logging.info("Downloading AIT-Core")

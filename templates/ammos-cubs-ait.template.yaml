@@ -154,9 +154,10 @@ Resources:
         S3Key: !Sub '${QSS3KeyPrefix}functions/packages/CopyAitDeployment/lambda.zip'
       Description: Bootstrap an EFS Filesystem with the files needed for the Aerie Deployment
       MemorySize: 128
-      Timeout: 300
+      Timeout: 900
+      # Need to change this to updated IAM
       Role: 'arn:aws-us-gov:iam::016915823617:role/account-managed/lambda/VK-MyBasicLambdaExecution'
-      Runtime: python3.8
+      Runtime: python3.9
       Environment:
         Variables:
           BUCKET_NAME: !Ref ConfigBucketName
@@ -220,12 +221,12 @@ Resources:
           function exitTrap(){
           exitCode=$?
           /opt/aws/bin/cfn-signal \
-          --stack ast-sandbox-main-AmmosCubsAITStack-1BQ7JZPVM3HIB \
+          --stack ${AWS::StackName} \
           --resource AitAutoScalingGroup \
-          --region us-gov-west-1 -e $exitCode || echo 'Failed to send Cloudformation Signal'
+          --region ${AWS::Region} -e $exitCode || echo 'Failed to send Cloudformation Signal'
           }
           trap exitTrap EXIT
-          CONFIG_BUCKET_NAME=ast-sandbox-config
+          CONFIG_BUCKET_NAME=${ConfigBucketName}
 
           function boostrap_aws_stuff(){
           # rpms and stuff
@@ -284,7 +285,7 @@ Resources:
           pip3 install botocore
           # Define mount location and efs id
           DIR_TGT=/mnt/efs/
-          EC2_REGION=us-gov-west-1
+          EC2_REGION=${AWS::Region}
           EFS_FILE_SYSTEM_ID=${FileSystem}
           echo "Mounting directory to EFS: $EFS_FILE_SYSTEM_ID"
           mkdir -p $DIR_TGT
@@ -298,7 +299,7 @@ Resources:
           SETUP_DIR=/mnt/efs/ait/setup # CHANGE THIS TO MOUNTED SETUP DIRECTORY
           USER=ec2-user
           GROUP=ec2-user
-          AWS_REGION=us-gov-west-1
+          AWS_REGION=${AWS::Region}
           python3.7 -m pip install virtualenv virtualenvwrapper
           cd $PROJECT_HOME
 
