@@ -8,9 +8,6 @@ Parameters:
     Description: Name of the S3 bucket used to store project-specific configuration
       files.
     Type: String
-  AvailabilityZone:
-    Description: AvailabilityZone for the AWS Group
-    Type: AWS::EC2::AvailabilityZone::Name  
   FQDN:
     Description: Fully Qualified Domain Name to use for project resources root.
     Type: String
@@ -110,7 +107,6 @@ Resources:
   FileSystem:
     Type: AWS::EFS::FileSystem
     Properties:
-      AvailabilityZoneName: !Ref 'AvailabilityZone'    
       Encrypted: true
       PerformanceMode: generalPurpose
       BackupPolicy:
@@ -119,14 +115,21 @@ Resources:
       - Key: Name
         Value: !Sub "${ProjectName}-ait-efs"
 
-  MountTargetPublicA:
+  MountTargetPrivateA:
     Type: AWS::EFS::MountTarget
     Properties:
       FileSystemId: !Ref FileSystem
       SubnetId: "subnet-03a1ec6be37d72106"
       SecurityGroups:
       - Ref: EfsSecurityGroup
-      
+  MountTargetPrivateB:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId: "subnet-09abda62751c89495"
+      SecurityGroups:
+      - Ref: EfsSecurityGroup
+
   RootAccessPoint:
     Type: AWS::EFS::AccessPoint
     Properties:
