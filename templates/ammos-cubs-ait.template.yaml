@@ -141,7 +141,7 @@ Resources:
         CreationInfo:
           OwnerGid: "1001"
           OwnerUid: "1001"
-          Permissions: "777"
+          Permissions: "755"
         Path: "/efs"
 
   AitEfsBootstrap:
@@ -150,6 +150,9 @@ Resources:
       ServiceToken: !GetAtt CopyAitDeploymentEfs.Arn
   CopyAitDeploymentEfs:
     Type: AWS::Lambda::Function
+    DependsOn:
+      - "MountTargetPrivateA"
+      - "MountTargetPrivateB"
     Properties:
       Handler: copy_ait_deployment.handler
       Code:
@@ -204,7 +207,7 @@ Resources:
         - DeviceName: /dev/sda1
           Ebs:
             DeleteOnTermination: true
-            VolumeSize: 64
+            VolumeSize: 
       IamInstanceProfile: !Ref 'AitAutoScalingGroupInstanceProfile'
       ImageId: !FindInMap
         - AWSAMIRegionMap
