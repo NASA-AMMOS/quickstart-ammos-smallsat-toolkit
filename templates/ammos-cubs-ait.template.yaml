@@ -143,6 +143,19 @@ Resources:
           OwnerUid: "1001"
           Permissions: "755"
         Path: "/efs"
+  AitAccessPoint:
+    Type: AWS::EFS::AccessPoint
+    Properties:
+      FileSystemId: !Ref FileSystem
+      PosixUser:
+        Uid: "1001"
+        Gid: "1001"
+      RootDirectory:
+        CreationInfo:
+          OwnerGid: "1001"
+          OwnerUid: "1001"
+          Permissions: "755"
+        Path: "/efs/ait"
 
   AitEfsBootstrap:
     Type: AWS::CloudFormation::CustomResource
@@ -294,10 +307,11 @@ Resources:
           DIR_TGT=/mnt/efs/
           EC2_REGION=${AWS::Region}
           EFS_FILE_SYSTEM_ID=${FileSystem}
+          AIT_EFS_ACCESSPOINT_ID=${AitAccessPoint}
           echo "Mounting directory to EFS: $EFS_FILE_SYSTEM_ID"
           mkdir -p $DIR_TGT
-          echo "Mounting $EFS_FILE_SYSTEM_ID to $DIR_TGT"
-          sudo mount -t efs  $EFS_FILE_SYSTEM_ID $DIR_TGT
+          echo "Mounting for  Access Point $AIT_EFS_ACCESSPOINT_ID from filesystem: $EFS_FILE_SYSTEM_ID to $DIR_TGT"
+          sudo mount -t efs -o tls,accesspoint=$AIT_EFS_ACCESSPOINT_ID $EFS_FILE_SYSTEM_ID $DIR_TGT
           }
 
           function install_ait_and_dependents(){
