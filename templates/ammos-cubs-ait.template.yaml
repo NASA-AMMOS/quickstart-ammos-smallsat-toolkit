@@ -305,7 +305,6 @@ Resources:
           pip3 install botocore
           # Define mount location and efs id
           DIR_TGT=/mnt/efs/
-          EC2_REGION=${AWS::Region}
           EFS_FILE_SYSTEM_ID=${FileSystem}
           AIT_EFS_ACCESSPOINT_ID=${AitAccessPoint}
           echo "Mounting directory to EFS: $EFS_FILE_SYSTEM_ID"
