@@ -154,7 +154,7 @@ Resources:
         S3Key: !Sub '${QSS3KeyPrefix}functions/packages/CopyAitDeployment/lambda.zip'
       Description: Bootstrap an EFS Filesystem with the files needed for the Aerie Deployment
       MemorySize: 128
-      Timeout: 180
+      Timeout: 300
       Role: 'arn:aws-us-gov:iam::016915823617:role/account-managed/lambda/VK-MyBasicLambdaExecution'
       Runtime: python3.8
       Environment:
