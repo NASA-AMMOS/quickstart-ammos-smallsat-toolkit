@@ -1,63 +1,62 @@
+from asyncio.log import logger
 import cfnresponse
 import json
 import os
 import shutil
 import pathlib
-import urllib.request
-from urllib.request import urlretrieve
+from urllib.request import urlopen
 import tarfile
 import boto3
+import logging
 
+# Setup basic configuration for logging
+logging.basicConfig(encoding='utf-8', level=logging.DEBUG)
+
+# Initite S3 Resource
+s3_resource = boto3.resource("s3")
 
 def download_tar_gz(url, path):
     """ ""
     Function to downlaod dependencies in local path
     """
-    filehandle = urllib.request.urlopen(url)
+    filehandle = urlopen(url)
     tar = tarfile.open(fileobj=filehandle, mode="r|gz")
     tar.extractall(path)
     tar.close()
-    print(f"File from {url} downloaded into {path}")
-
-
-def download_file(url, filename):
-    urlretrieve(url, filename)
-
+    logging.info(f"File from {url} downloaded into {path}")
 
 def download_directory_from_s3(bucket_name, remote_path, dir_path):
     """Funciton to downlaod a directory from s3"""
-    s3_resource = boto3.resource("s3")
     bucket = s3_resource.Bucket(bucket_name)
-
     # Download each of the files
     for obj in bucket.objects.filter(Prefix=remote_path):
         if not os.path.exists(os.path.dirname(obj.key)):
-            os.makedirs(os.path.dirname(obj.key))
+            logger.info(f"Creating directory {os.path.dirname(obj.key)}")
+            pathlib.Path(os.path.dirname(obj.key)).mkdir(parents=True, exist_ok=True)
         dir_path = dir_path + str(obj.key)
         bucket.download_file(obj.key, obj.key, dir_path)
 
 
 def handler(event, context):
-    """Lambda Handler for dealing with creating a new cognito user using AWS Cognito
+    """Lambda Handler for dealing with bootstrapping EFS and downloading dependencies for running the AIT server
 
     Args:
         event (dict): Event dictionary from custom resource
         context (obj): Context manager
     """
 
-    print(json.dumps(event, default=str))
+    print(json.dumps(event, default=str, indent=2))
     responseData = {}
     status = cfnresponse.FAILED
     dir_path = "/tmp"
     BUCKET_NAME = os.getenv("ConfigBucketName")
 
     if event["RequestType"] == "Create":
-        responseData["LambaTest"] = "Create"
-        status = cfnresponse.SUCCESS
+        responseData["RequestType"] = "Create"
 
         ## AIT Core
         # Build directory AIT core directory
-        print("Downloading AIT-Core")
+        logging.info("Downloading AIT-Core")
         pathlib.Path("/mnt/efs/ait/AIT-Core/").mkdir(parents=True, exist_ok=True)
         # Download and place into AIT
         ait_url = (
@@ -70,7 +69,7 @@ def handler(event, context):
 
         ## AIT GUI
         # Build directory AIT GUI directory
-        print("Downloading AIT GUI")
+        logging.info("Downloading AIT GUI")
         pathlib.Path("/mnt/efs/ait/AIT-GUI/").mkdir(parents=True, exist_ok=True)
         # Download and place into AIT
         ait_url = "https://github.com/NASA-AMMOS/AIT-GUI/archive/refs/tags/2.3.1.tar.gz"
@@ -81,7 +80,7 @@ def handler(event, context):
 
         ## AIT DSN
         # Build directory AIT DSN directory
-        print("Downloading AIT DSN Plugin")
+        logging.info("Downloading AIT DSN Plugin")
         pathlib.Path("/mnt/efs/ait/AIT-DSN/").mkdir(parents=True, exist_ok=True)
         # Download and place into AIT
         ait_url = "https://github.com/NASA-AMMOS/AIT-DSN/archive/refs/tags/2.0.0.tar.gz"
@@ -95,20 +94,8 @@ def handler(event, context):
         for dir in ["outgoing", "incoming", "tempfiles", "pdusink"]:
            (datasink_dir / dir).mkdir(parents=True, exist_ok=True)
 
-        # Download influx dB
-        print("Downloading Influx DB RPM")
-        download_file(
-            url="https://repos.influxdata.com/rhel/6/amd64/stable/influxdb-1.2.4.x86_64.rpm",
-            filename="/tmp/influxdb-1.2.4.x86_64.rpm",
-        )
-        pathlib.Path("/mnt/efs/ait/setup").mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(
-            "/tmp/influxdb-1.2.4.x86_64.rpm",
-            "/mnt/efs/ait/setup/influxdb-1.2.4.x86_64.rpm",
-        )
-
         ## Configuration files from S3
-        print("Downloading CONFIG files")
+        logging.info("Downloading Configuration files")
         s3 = boto3.client("s3")
         bucket = s3.list_objects(Bucket=BUCKET_NAME)
         for content in bucket["Contents"]:
@@ -127,7 +114,8 @@ def handler(event, context):
             "/tmp/configs", "/mnt/efs/ait/setup/configs", dirs_exist_ok=True
         )
 
-        print("All downloads completed...")
+        logging.info("All downloads completed...")
+        status = cfnresponse.SUCCESS
 
     elif event["RequestType"] in ["Delete", "Update"]:
         # No action needs to be taken for delete or update events
@@ -137,7 +125,8 @@ def handler(event, context):
         responseData = {"Message": "Invalid Request Type"}
 
     path = "/mnt/efs/ait/"
-    print(f"Listing directories in place {path}")
-    print(os.listdir(path))
+    logging.info(f"Listing directories in place {path}")
+    print(os.system('tree -R .'))
+    
     # Send response back to CFN
     cfnresponse.send(event, context, status, responseData)

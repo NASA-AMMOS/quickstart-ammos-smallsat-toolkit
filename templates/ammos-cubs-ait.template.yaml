@@ -19,7 +19,7 @@ Parameters:
     Type: List<AWS::EC2::Subnet::Id>
   VPCID:
     Description: VPC ID for deploying project resources
-    Type: AWS::EC2::VPC::Id      
+    Type: AWS::EC2::VPC::Id
   InstanceType:
     Description: Instance type to be used for AIT Server instances; see deployment
       guide for recommendations
@@ -117,7 +117,7 @@ Resources:
         Status: DISABLED
       FileSystemTags:
       - Key: Name
-        Value: ait-efs
+        Value: !Sub "${ProjectName}-ait-efs"
 
   MountTargetPublicA:
     Type: AWS::EFS::MountTarget

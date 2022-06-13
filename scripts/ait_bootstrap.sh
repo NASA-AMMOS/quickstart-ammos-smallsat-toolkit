@@ -77,7 +77,7 @@ sudo mount -t efs  $EFS_FILE_SYSTEM_ID $DIR_TGT
 
 function install_ait_and_dependents(){
 # Set variables for system install
-PROJECT_HOME=/mnt/efs/ait
+PROJECT_HOME=/home/ec2-user
 SETUP_DIR=/mnt/efs/ait/setup
 USER=ec2-user
 GROUP=ec2-user
@@ -106,9 +106,7 @@ EOM
 mkvirtualenv ait
 workon ait
 
-# Pull assets, config, and secrets from s3/sm (NEEDS TO MOVE)
-mkdir -p $SETUP_DIR
-/usr/local/aws-cli/v2/current/bin/aws --region $AWS_REGION s3 sync s3://$CONFIG_BUCKET_NAME/configs/ait/ $SETUP_DIR/
+# Pull assets, config, and secrets from s3/sm 
 /usr/local/aws-cli/v2/current/bin/aws --region $AWS_REGION s3 cp s3://"$CONFIG_BUCKET_NAME"/configs/modules/openmct-static.tgz - | tar -xz -C /var/www/html
 
 # Install open-source AIT components
