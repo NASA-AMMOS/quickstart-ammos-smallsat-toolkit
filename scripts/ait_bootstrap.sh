@@ -53,7 +53,7 @@ echo "Bootstrapping EFS and Mounting it"
 sudo yum -y update  
 sudo yum -y install nfs-utils
 
-# Installing EFS Amazon Utilss
+# Installing EFS Amazon Utils
 echo "Downloading and installing Amazon EFS Utils"
 sudo yum -y install git rpm-build make
 sudo git clone https://github.com/aws/efs-utils
@@ -66,19 +66,20 @@ cd /
 # Install botocore libraries
 pip3 install botocore
 # Define mount location and efs id
-DIR_TGT=/mnt/efs/
-EC2_REGION=${AWS::Region}
+DIR_TGT=/mnt/efs/ait/
 EFS_FILE_SYSTEM_ID=${FileSystem}
+AIT_EFS_ACCESSPOINT_ID=${AitAccessPoint}
 echo "Mounting directory to EFS: $EFS_FILE_SYSTEM_ID"
 mkdir -p $DIR_TGT
-echo "Mounting $EFS_FILE_SYSTEM_ID to $DIR_TGT"
-sudo mount -t efs  $EFS_FILE_SYSTEM_ID $DIR_TGT
+echo "Mounting for  Access Point $AIT_EFS_ACCESSPOINT_ID from filesystem: $EFS_FILE_SYSTEM_ID to $DIR_TGT"
+sudo mount -t efs -o tls,accesspoint=$AIT_EFS_ACCESSPOINT_ID $EFS_FILE_SYSTEM_ID $DIR_TGT
 }
 
 function install_ait_and_dependents(){
 # Set variables for system install
-PROJECT_HOME=/home/ec2-user
+PROJECT_HOME=/mnt/efs/ait
 SETUP_DIR=/mnt/efs/ait/setup
+AIT_DEPENDENTS_DIR=/mnt/efs/ait/
 USER=ec2-user
 GROUP=ec2-user
 AWS_REGION=${AWS::Region}
@@ -98,29 +99,25 @@ source /root/.bashrc
 
 tee -a > $PROJECT_HOME/.virtualenvs/postactivate << EOM
 if [ \$VIRTUAL_ENV ==  "$PROJECT_HOME/.virtualenvs/ait" ]; then
-export AIT_ROOT=$PROJECT_HOME/AIT-Core
-export AIT_CONFIG=$PROJECT_HOME/AIT-Core/config/config.yaml
+export AIT_ROOT=$AIT_DEPENDENTS_DIR/AIT-Core
+export AIT_CONFIG=$AIT_DEPENDENTS_DIR/AIT-Core/config/config.yaml
 fi
 EOM
 
 mkvirtualenv ait
 workon ait
 
-# Pull assets, config, and secrets from s3/sm 
+# Pull assets, config, and secrets from s3/sm (NEEDS TO MOVE)
 /usr/local/aws-cli/v2/current/bin/aws --region $AWS_REGION s3 cp s3://"$CONFIG_BUCKET_NAME"/configs/modules/openmct-static.tgz - | tar -xz -C /var/www/html
 
 # Install open-source AIT components
-cd $PROJECT_HOME/AIT-Core/
-git checkout 2.3.5
-pip install .
-/usr/bin/cp -r $SETUP_DIR/config $PROJECT_HOME/AIT-Core
-
-cd $PROJECT_HOME/AIT-GUI/
-git checkout 2.3.1
+cd $AIT_DEPENDENTS_DIR/AIT-Core/
 pip install .
 
-cd $PROJECT_HOME/AIT-DSN
-git checkout 2.0.0
+cd $AIT_DEPENDENTS_DIR/AIT-GUI/
+pip install .
+
+cd $AIT_DEPENDENTS_DIR/AIT-DSN
 pip install .
 
 cd $PROJECT_HOME
@@ -134,11 +131,12 @@ sed 's/<CFN_FQDN>/${FQDN}/g' /etc/httpd/conf.d/proxy.conf.bak > /etc/httpd/conf.
 rm /etc/httpd/conf.d/proxy.conf.bak
 
 # Inject FQDN from Cloudformation into OpenMCT file
-mv /var/www/html/openmct/index.html{,.bak}
-sed 's/<CFN_FQDN>/${FQDN}/g' /var/www/html/openmct/index.html.bak > /var/www/html/openmct/index.html
-rm /var/www/html/openmct/index.html.bak
+mv /mnt/efs/ait/openmct/index.html{,.bak}
+sed 's/<CFN_FQDN>/${FQDN}/g' /mnt/efs/ait/openmct/index.html.bak > /mnt/efs/ait/openmct/index.html
+rm /mnt/efs/ait/openmct/index.html.bak
 
 # Install InfluxDB and data plugin
+curl https://repos.influxdata.com/rhel/6/amd64/stable/influxdb-1.2.4.x86_64.rpm -o $SETUP_DIR/influxdb-1.2.4.x86_64.rpm
 yum localinstall -y $SETUP_DIR/influxdb-1.2.4.x86_64.rpm
 
 pip install influxdb
@@ -154,8 +152,8 @@ Description=AIT-Core Server
 [Service]
 Type=simple
 User=root
-Environment=AIT_ROOT=$PROJECT_HOME/AIT-Core
-Environment=AIT_CONFIG=$PROJECT_HOME/AIT-Core/config/config.yaml
+Environment=AIT_ROOT=$AIT_DEPENDENTS_DIR/AIT-Core
+Environment=AIT_CONFIG=$AIT_DEPENDENTS_DIR/AIT-Core/config/config.yaml
 ExecStart=/home/ec2-user/.virtualenvs/ait/bin/ait-server
 
 [Install]

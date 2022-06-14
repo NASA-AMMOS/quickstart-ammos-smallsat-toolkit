@@ -113,8 +113,13 @@ def handler(event, context):
 
         # Copy configuration files into mounted EFS
         shutil.copytree(
-            "/tmp/configs", "/mnt/efs/ait/setup/configs", dirs_exist_ok=True
+            "/tmp/configs/ait", "/mnt/efs/ait/setup/configs", dirs_exist_ok=True
         )
+
+        # Extract and open OpenMCT Application 
+        tar = tarfile.open("/tmp/configs/modules/openmct-static.tgz", mode="r|gz")
+        tar.extractall(path="/mnt/efs/ait")
+        tar.close()
 
         logging.info("All downloads completed...")
         status = cfnresponse.SUCCESS
@@ -128,7 +133,6 @@ def handler(event, context):
 
     path = "/mnt/efs/ait/"
     logging.info(f"Listing directories in place {path}")
-    print(os.system('tree -R .'))
     
     # Send response back to CFN
     cfnresponse.send(event, context, status, responseData)
