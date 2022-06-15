@@ -92,7 +92,7 @@ def handler(event, context):
         )
 
         # Build necessary folders for the AIT DSN plugin
-        datasink_dir = pathlib.Path("/mnt/efs/ait/AIT-Core/ait/dsn/cfdp/datasink/outgoing")
+        datasink_dir = pathlib.Path("/mnt/efs/ait/AIT-Core/ait/dsn/cfdp/datasink")
         for dir in ["outgoing", "incoming", "tempfiles", "pdusink"]:
            (datasink_dir / dir).mkdir(parents=True, exist_ok=True)
 
@@ -114,6 +114,11 @@ def handler(event, context):
         # Copy configuration files into mounted EFS
         shutil.copytree(
             "/tmp/configs/ait", "/mnt/efs/ait/setup/configs", dirs_exist_ok=True
+        )
+
+        # Copy AIT configuration files into AIT-Core directory
+        shutil.copytree(
+            "/tmp/configs/ait/config", "/mnt/efs/ait/AIT-Core/config", dirs_exist_ok=True
         )
 
         # Extract and open OpenMCT Application 

@@ -69,6 +69,7 @@ pip3 install botocore
 DIR_TGT=/mnt/efs/ait/
 EFS_FILE_SYSTEM_ID=${FileSystem}
 AIT_EFS_ACCESSPOINT_ID=${AitAccessPoint}
+# TODO: Write fs-id and fsap-id to some file
 echo "Mounting directory to EFS: $EFS_FILE_SYSTEM_ID"
 mkdir -p $DIR_TGT
 echo "Mounting for  Access Point $AIT_EFS_ACCESSPOINT_ID from filesystem: $EFS_FILE_SYSTEM_ID to $DIR_TGT"
@@ -77,9 +78,9 @@ sudo mount -t efs -o tls,accesspoint=$AIT_EFS_ACCESSPOINT_ID $EFS_FILE_SYSTEM_ID
 
 function install_ait_and_dependents(){
 # Set variables for system install
-PROJECT_HOME=/mnt/efs/ait
+PROJECT_HOME=/home/ec2-user
 SETUP_DIR=/mnt/efs/ait/setup
-AIT_DEPENDENTS_DIR=/mnt/efs/ait/
+AIT_DEPENDENTS_DIR=/mnt/efs/ait
 USER=ec2-user
 GROUP=ec2-user
 AWS_REGION=${AWS::Region}
@@ -107,9 +108,6 @@ EOM
 mkvirtualenv ait
 workon ait
 
-# Pull assets, config, and secrets from s3/sm (NEEDS TO MOVE)
-/usr/local/aws-cli/v2/current/bin/aws --region $AWS_REGION s3 cp s3://"$CONFIG_BUCKET_NAME"/configs/modules/openmct-static.tgz - | tar -xz -C /var/www/html
-
 # Install open-source AIT components
 cd $AIT_DEPENDENTS_DIR/AIT-Core/
 pip install .
@@ -123,7 +121,7 @@ pip install .
 cd $PROJECT_HOME
 
 # Copy necessary apache configs
-cp $SETUP_DIR/httpd_proxy.conf /etc/httpd/conf.d/proxy.conf
+cp $SETUP_DIR/configs/httpd_proxy.conf /etc/httpd/conf.d/proxy.conf
 
 # Inject FQDN from Cloudformation for proper virtual host configuration
 mv /etc/httpd/conf.d/proxy.conf{,.bak}
@@ -136,8 +134,8 @@ sed 's/<CFN_FQDN>/${FQDN}/g' /mnt/efs/ait/openmct/index.html.bak > /mnt/efs/ait/
 rm /mnt/efs/ait/openmct/index.html.bak
 
 # Install InfluxDB and data plugin
-curl https://repos.influxdata.com/rhel/6/amd64/stable/influxdb-1.2.4.x86_64.rpm -o $SETUP_DIR/influxdb-1.2.4.x86_64.rpm
-yum localinstall -y $SETUP_DIR/influxdb-1.2.4.x86_64.rpm
+curl https://repos.influxdata.com/rhel/6/amd64/stable/influxdb-1.2.4.x86_64.rpm -o /tmp/influxdb-1.2.4.x86_64.rpm
+yum localinstall -y /tmp/influxdb-1.2.4.x86_64.rpm
 
 pip install influxdb
 systemctl enable influxdb
