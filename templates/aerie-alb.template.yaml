@@ -156,15 +156,15 @@ Resources:
         - Key: access_logs.s3.enabled
           Value: !If [AlbAccessLogs, "true", "false"]
         - !If
-          - AlbAccessLogs
-          - Key: access_logs.s3.bucket
-            Value: !Ref AerieAlbLogsBucket
-          - !Ref AWS::NoValue
+            - AlbAccessLogs
+            - Key: access_logs.s3.bucket
+              Value: !Ref AerieAlbLogsBucket
+            - !Ref AWS::NoValue
         - !If
-          - AlbAccessLogs
-          - Key: access_logs.s3.prefix
-            Value: ecs/aerie-alb
-          - !Ref AWS::NoValue
+            - AlbAccessLogs
+            - Key: access_logs.s3.prefix
+              Value: "ecs/aerie-alb"
+            - !Ref AWS::NoValue
         - Key: routing.http2.enabled
           Value: "false"
         - Key: routing.http.desync_mitigation_mode
