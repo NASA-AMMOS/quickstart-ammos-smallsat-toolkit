@@ -71,9 +71,15 @@ This is the main configuration file for AIT.
 
 During deployment, the Quick Start retrieves this file along with the other AIT configuration files (the files in the `configs/ait/config` S3 folder) and places them in the folder `/home/ec2-user/AIT-Core/config` on the AIT EC2 instance.
 
-This file references other configuration files (file paths are relative) as well as enabling a default set of AIT plugins: AIT GUI, the Data Archive plugin for InfluxDB, and the AIT Open MCT plugin.
+This file references other configuration files (file paths are relative) as well as enabling a default set of AIT plugins: AIT GUI, the Data Archive plugin for InfluxDB, the AIT Open MCT plugin, and the AIT DSN Plugin.
 
 For more information, see https://ait-core.readthedocs.io/en/latest/configuration_intro.html#config-yaml[config.yaml^] in the AIT documentation.
+
+===== config.yaml (AIT-DSN plugin)
+
+To ensure the AIT DSN plugin is setup appropriately, you must provide the valid hostnames in the main `config.yaml` file. The default hostnames are set to `example.hostname.*` and must be configured appropriately.
+
+For more information see https://ait-core.readthedocs.io/en/master/project_setup.html[the docs here^]
 
 ===== httpd_proxy.conf
 This configuration file defines how Apache HTTP Server proxies requests to either AIT or Open MCT. Both applications are set up as virtual hosts in Apache. Requests to AIT get proxied to the AIT backend Python process. Requests to Open MCT are handled directly by the Apache web server that serves Open MCT's static files.
