@@ -169,7 +169,11 @@ A landing page opens showing links to the AIT, Open MCT, and AIT Sequence Editor
 
 . Choose each link. Verify that each application opens.
 +
-You may be prompted for login credentials the first time you open the applications. Login credentials are managed by Amazon Cognito. For more information, see link:#_create_amazon_cognito_user_identities[Create Amazon Cognito user identities] later in this guide.
+You will be prompted for login credentials the first time you open the applications. Login credentials are managed by Amazon Cognito. A default user is created as part of the QuickStart and can be used for testing the deployment. These credentials can be found in the outputs of the Main Quickstart CloudFormation stack in the AWS Console for your associated deployment. These outputs can be identified by the following names:
+- Username: `CognitoDefaultUserUsername`
+- Password: `CognitoDefaultUserTempPassword`
+
+Also note, that the Cognito default user will force password change upon first login
 
 === Verify that telemetry is flowing
 The AIT software includes two scripts that generate sample telemetry: `ait-example` and `ait-tlm-simulate`. Verify the telemetry by running both of these command line interface (CLI) programs on the AIT EC2 instance as follows.
