@@ -559,3 +559,9 @@ Outputs:
   CognitoDefaultUserTempPassword:
     Description: Temporary Password for the Cognito User created by CognitoDefaultUser
     Value: !GetAtt AmmosCognitoStack.Outputs.CognitoDefaultUserTempPassword
+  AlbDnsName:
+    Description: amazonaws.com DNS name of the deployed Load Balancer
+    Value: !GetAtt AmmosCubsALBStack.Outputs.AlbDnsName
+  ApplicationUrl:
+    Description: URL for the deployed set of applications
+    Value: !Sub "https://${FQDN}"
