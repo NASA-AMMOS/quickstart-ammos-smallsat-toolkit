@@ -69,11 +69,14 @@ pip3 install botocore
 DIR_TGT=/mnt/efs/ait/
 EFS_FILE_SYSTEM_ID=${FileSystem}
 AIT_EFS_ACCESSPOINT_ID=${AitAccessPoint}
-# TODO: Write fs-id and fsap-id to some file
-echo "Mounting directory to EFS: $EFS_FILE_SYSTEM_ID"
 mkdir -p $DIR_TGT
 echo "Mounting for  Access Point $AIT_EFS_ACCESSPOINT_ID from filesystem: $EFS_FILE_SYSTEM_ID to $DIR_TGT"
 sudo mount -t efs -o tls,accesspoint=$AIT_EFS_ACCESSPOINT_ID $EFS_FILE_SYSTEM_ID $DIR_TGT
+tee -a /root/.efs-mount-info << EOM
+EFS_FILE_SYSTEM_ID=$EFS_FILE_SYSTEM_ID
+AIT_EFS_ACCESSPOINT_ID=$AIT_EFS_ACCESSPOINT_ID
+DIR_TGT=$DIR_TGT
+EOM
 }
 
 function install_ait_and_dependents(){
