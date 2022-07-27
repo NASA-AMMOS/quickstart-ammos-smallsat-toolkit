@@ -2,28 +2,76 @@ import cfnresponse
 import json
 import os
 import shutil
-import pathlib
+from pathlib import Path
 from urllib.request import urlopen
 import tarfile
 import boto3
 import logging
+from dataclasses import dataclass
+from enum import Enum
 
 # Setup basic configuration for logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(os.getenv("LOGLEVEL", logging.DEBUG))
 
-# Initite S3 Resource
+# Initialize S3 Resource
 s3_resource = boto3.resource("s3")
+
+# Define standard file locations
+class LOCAL:
+    tmp = Path("/tmp")
+    tmp_config = tmp / "configs"
+    modules = tmp_config / "modules"
+
+
+class EFS:
+    ait = Path("/mnt/efs/ait")
+    ait_core = ait / "AIT-CORE"
+    ait_gui = ait / "AIT-GUI"
+    ait_dsn = ait / "AIT-DSN/"
+    setup = ait / "setup"
+
+# Define Software resources (github url and version)
+@dataclass
+class Software:
+    name: str
+    version: str
+    repo: str
+    archive_url: str
+
+    def __post_init__(self):
+        self.repo = f"https://github.com/NASA-AMMOS/{self.name}"
+        self.archive_url = f"{self.repo}/archive/refs/tags/{self.version}.tar.gz"
+
+
+AIT = Software("AIT-Core", "2.3.5")
+AIT_GUI = Software("AIT-GUI", "2.3.1")
+AIT_DSN = Software("AIT-DSN", "2.0.0")
+
 
 def download_tar_gz(url, path):
     """ ""
-    Function to downlaod dependencies in local path
+    Function to download dependencies in local path
     """
-    filehandle = urlopen(url)
-    tar = tarfile.open(fileobj=filehandle, mode="r|gz")
-    tar.extractall(path)
-    tar.close()
+    file_handle = urlopen(url)
+    with tarfile.open(fileobj=file_handle, mode="r|gz") as tar:
+        tar.extractall(path)
     logger.info("File from %s downloaded from %s", url, path)
+
+
+def download_software(software: Software, location: Path):
+    """Download a software artifact as a tgz and extract to EFS
+
+    :param software: The Software to be downloaded
+    :param location: The location on EFS to extract the downloaded Software
+    """
+    logging.info(f"Downloading {software.name}")
+    # Download to local temp storage
+    download_tar_gz(software.archive_url, path=LOCAL.tmp)
+    # Place on EFS in desired location
+    location.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(LOCAL.tmp / f"{software.name}-{software.version}", location, dirs_exist_ok=True)
+
 
 def download_directory_from_s3(bucket_name, remote_path, dir_path):
     """Function to download a directory from s3"""
@@ -31,14 +79,16 @@ def download_directory_from_s3(bucket_name, remote_path, dir_path):
     # Download each of the files
     for obj in bucket.objects.filter(Prefix=remote_path):
         # Check if the path already exists locally on the lambda file system
-        if not os.path.exists(os.path.dirname(obj.key)):
+        path = Path(obj.key)
+        if not path.parent.exists():
             logger.info(f"Creating directory {os.path.dirname(obj.key)}")
-            pathlib.Path(os.path.dirname(obj.key)).mkdir(parents=True, exist_ok=True)
+            Path(os.path.dirname(obj.key)).mkdir(parents=True, exist_ok=True)
             # Check if the files exist on the EFS system
             efs_path = "/mnt/efs/" + os.path.dirname(obj.key)
             if not os.path.exists(efs_path):
                 dir_path = dir_path + str(obj.key)
                 bucket.download_file(obj.key, obj.key, dir_path)
+
 
 def handler(event, context):
     """Lambda Handler for dealing with bootstrapping EFS and downloading dependencies for running the AIT server
@@ -51,85 +101,54 @@ def handler(event, context):
     print(json.dumps(event, default=str, indent=2))
     responseData = {}
     status = cfnresponse.FAILED
-    dir_path = "/tmp"
+    LOCAL.tmp
 
     if event["RequestType"] == "Create":
         responseData["RequestType"] = "Create"
         BUCKET_NAME = event["ResourceProperties"]["BucketName"]
-        ## AIT Core
-        # Build directory AIT core directory
-        logging.info("Downloading AIT-Core")
-        pathlib.Path("/mnt/efs/ait/AIT-Core/").mkdir(parents=True, exist_ok=True)
-        # Download and place into AIT
-        ait_url = (
-            "https://github.com/NASA-AMMOS/AIT-Core/archive/refs/tags/2.3.5.tar.gz"
-        )
-        download_tar_gz(ait_url, path=dir_path)
-        shutil.copytree(
-            "/tmp/AIT-Core-2.3.5", "/mnt/efs/ait/AIT-Core", dirs_exist_ok=True
-        )
 
-        ## AIT GUI
-        # Build directory AIT GUI directory
-        logging.info("Downloading AIT GUI")
-        pathlib.Path("/mnt/efs/ait/AIT-GUI/").mkdir(parents=True, exist_ok=True)
-        # Download and place into AIT
-        ait_url = "https://github.com/NASA-AMMOS/AIT-GUI/archive/refs/tags/2.3.1.tar.gz"
-        download_tar_gz(ait_url, path=dir_path)
-        shutil.copytree(
-            "/tmp/AIT-GUI-2.3.1", "/mnt/efs/ait/AIT-GUI", dirs_exist_ok=True
-        )
-
-        ## AIT DSN
-        # Build directory AIT DSN directory
-        logging.info("Downloading AIT DSN Plugin")
-        pathlib.Path("/mnt/efs/ait/AIT-DSN/").mkdir(parents=True, exist_ok=True)
-        # Download and place into AIT
-        ait_url = "https://github.com/NASA-AMMOS/AIT-DSN/archive/refs/tags/2.0.0.tar.gz"
-        download_tar_gz(ait_url, path=dir_path)
-        shutil.copytree(
-            "/tmp/AIT-DSN-2.0.0", "/mnt/efs/ait/AIT-DSN", dirs_exist_ok=True
-        )
+        ## Download Software artifacts
+        download_software(AIT, EFS.ait_core)
+        download_software(AIT_GUI, EFS.ait_gui)
+        download_software(AIT_DSN, EFS.ait_dsn)
 
         # Build necessary folders for the AIT DSN plugin
-        datasink_dir = pathlib.Path("/mnt/efs/ait/AIT-Core/ait/dsn/cfdp/datasink")
+        datasink_dir = EFS.ait_core / "ait/dsn/cfdp/datasink"
         for dir in ["outgoing", "incoming", "tempfiles", "pdusink"]:
-           (datasink_dir / dir).mkdir(parents=True, exist_ok=True)
+            (datasink_dir / dir).mkdir(parents=True, exist_ok=True)
 
         ## Configuration files from S3
         logging.info("Downloading Configuration files")
+        # TODO: use s3 downloader function from above?
         s3 = boto3.client("s3")
         bucket = s3.list_objects(Bucket=BUCKET_NAME)
         for content in bucket["Contents"]:
             key = content["Key"]
-            filename = f"/tmp/{key}"
-            path, _ = os.path.split(filename)
+            location: Path = LOCAL.tmp_config / key
             # Make directories
-            pathlib.Path(path).mkdir(parents=True, exist_ok=True)
-            print(f"Downloading {key} into {filename}")
+            location.parent.mkdir(parents=True, exist_ok=True)
+            print(f"Downloading {key} into {location}")
 
-            # Download file into relavent paths
-            s3.download_file(BUCKET_NAME, key, filename)
+            # Download file into relevant paths
+            s3.download_file(BUCKET_NAME, key, location)
 
         # Copy configuration files into mounted EFS
-        shutil.copytree(
-            "/tmp/configs/ait", "/mnt/efs/ait/setup/configs", dirs_exist_ok=True
-        )
+        shutil.copytree(LOCAL.tmp_config / "ait", EFS.setup / "configs", dirs_exist_ok=True)
 
         # Copy AIT configuration files into AIT-Core directory
         shutil.copytree(
-            "/tmp/configs/ait/config", "/mnt/efs/ait/AIT-Core/config", dirs_exist_ok=True
+            LOCAL.tmp_config / "ait" / "config", EFS.ait_core / "config", dirs_exist_ok=True
         )
 
-        # Extract and open OpenMCT Application 
-        tar = tarfile.open("/tmp/configs/modules/openmct-static.tgz", mode="r|gz")
-        tar.extractall(path="/mnt/efs/ait")
-        tar.close()
+        # Extract and open OpenMCT Application
+        with tarfile.open(LOCAL.modules / "openmct-static.tgz", mode="r|gz") as openmct_tar:
+            openmct_tar.extractall(path=EFS.ait)
 
         logging.info("All downloads completed...")
         status = cfnresponse.SUCCESS
 
     elif event["RequestType"] in ["Delete", "Update"]:
+        # TODO: handle Update event with s3 sync or some other safe-copy functionality
         # No action needs to be taken for delete or update events
         status = cfnresponse.SUCCESS
         responseData["LambaTest"] = "Not Create"
@@ -137,7 +156,7 @@ def handler(event, context):
         responseData = {"Message": "Invalid Request Type"}
 
     path = "/mnt/efs/ait/"
-    logging.info(f"Listing directories in place {path}")
-    
+    logging.info("Listing directories in: %s", path)
+
     # Send response back to CFN
     cfnresponse.send(event, context, status, responseData)
