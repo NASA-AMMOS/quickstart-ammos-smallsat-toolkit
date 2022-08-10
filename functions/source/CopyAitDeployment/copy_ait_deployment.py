@@ -1,21 +1,28 @@
-import cfnresponse
 import json
+import logging
 import os
 import shutil
-from pathlib import Path
-from urllib.request import urlopen
 import tarfile
-import boto3
-import logging
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
+from urllib.request import urlopen
+
+import boto3
+
+from crhelper import CfnResource
 
 # Setup basic configuration for logging
 logger = logging.getLogger(__name__)
-logger.setLevel(os.getenv("LOGLEVEL", logging.DEBUG))
+LOGLEVEL = os.getenv("LOGLEVEL", logging.DEBUG)
+logger.setLevel(LOGLEVEL)
+helper = CfnResource(json_logging=False, log_level=LOGLEVEL, boto_level='CRITICAL', sleep_on_delete=120)
 
-# Initialize S3 Resource
-s3_resource = boto3.resource("s3")
+try:
+    # Initialize S3 Resource
+    s3_resource = boto3.resource("s3")
+except Exception as e:
+    helper.init_failure(e)
 
 # Define standard file locations
 class LOCAL:
@@ -31,6 +38,7 @@ class EFS:
     ait_dsn = ait / "AIT-DSN/"
     setup = ait / "setup"
 
+
 # Define Software resources (github url and version)
 @dataclass
 class Software:
@@ -44,14 +52,17 @@ class Software:
         self.archive_url = f"{self.repo}/archive/refs/tags/{self.version}.tar.gz"
 
 
+# TODO: Get Software version from event properties to download specified version
 AIT = Software("AIT-Core", "2.3.5")
 AIT_GUI = Software("AIT-GUI", "2.3.1")
 AIT_DSN = Software("AIT-DSN", "2.0.0")
 
 
-def download_tar_gz(url, path):
-    """ ""
-    Function to download dependencies in local path
+def download_tar_gz(url: str, path: os.PathLike):
+    """Download and extract a .tar.gz artifact to a local path
+
+    :param url: url to download the artifact
+    :param path: local path for extracting the artifact
     """
     file_handle = urlopen(url)
     with tarfile.open(fileobj=file_handle, mode="r|gz") as tar:
@@ -65,7 +76,7 @@ def download_software(software: Software, location: Path):
     :param software: The Software to be downloaded
     :param location: The location on EFS to extract the downloaded Software
     """
-    logging.info(f"Downloading {software.name}")
+    logger.info(f"Downloading {software.name}")
     # Download to local temp storage
     download_tar_gz(software.archive_url, path=LOCAL.tmp)
     # Place on EFS in desired location
@@ -90,73 +101,62 @@ def download_directory_from_s3(bucket_name, remote_path, dir_path):
                 bucket.download_file(obj.key, obj.key, dir_path)
 
 
-def handler(event, context):
+@helper.create
+def bootstrap(event, context):
     """Lambda Handler for dealing with bootstrapping EFS and downloading dependencies for running the AIT server
 
     Args:
         event (dict): Event dictionary from custom resource
         context (obj): Context manager
     """
-
-    print(json.dumps(event, default=str, indent=2))
+    logger.info("Create")
+    logger.debug(json.dumps(event, default=str, indent=2))
     responseData = {}
-    status = cfnresponse.FAILED
-    LOCAL.tmp
 
-    if event["RequestType"] == "Create":
-        responseData["RequestType"] = "Create"
-        BUCKET_NAME = event["ResourceProperties"]["BucketName"]
+    responseData["RequestType"] = "Create"
+    BUCKET_NAME = event["ResourceProperties"]["BucketName"]
 
-        ## Download Software artifacts
-        download_software(AIT, EFS.ait_core)
-        download_software(AIT_GUI, EFS.ait_gui)
-        download_software(AIT_DSN, EFS.ait_dsn)
+    ## Download Software artifacts
+    download_software(AIT, EFS.ait_core)
+    download_software(AIT_GUI, EFS.ait_gui)
+    download_software(AIT_DSN, EFS.ait_dsn)
 
-        # Build necessary folders for the AIT DSN plugin
-        datasink_dir = EFS.ait_core / "ait/dsn/cfdp/datasink"
-        for dir in ["outgoing", "incoming", "tempfiles", "pdusink"]:
-            (datasink_dir / dir).mkdir(parents=True, exist_ok=True)
+    # Build necessary folders for the AIT DSN plugin
+    datasink_dir = EFS.ait_core / "ait/dsn/cfdp/datasink"
+    for dir in ["outgoing", "incoming", "tempfiles", "pdusink"]:
+        (datasink_dir / dir).mkdir(parents=True, exist_ok=True)
 
-        ## Configuration files from S3
-        logging.info("Downloading Configuration files")
-        # TODO: use s3 downloader function from above?
-        s3 = boto3.client("s3")
-        bucket = s3.list_objects(Bucket=BUCKET_NAME)
-        for content in bucket["Contents"]:
-            key = content["Key"]
-            location: Path = LOCAL.tmp_config / key
-            # Make directories
-            location.parent.mkdir(parents=True, exist_ok=True)
-            print(f"Downloading {key} into {location}")
+    ## Configuration files from S3
+    logger.info("Downloading Configuration files")
+    # TODO: use s3 downloader function from above?
+    s3 = boto3.client("s3")
+    bucket = s3.list_objects(Bucket=BUCKET_NAME)
+    for content in bucket["Contents"]:
+        key = content["Key"]
+        location: Path = LOCAL.tmp_config / key
+        # Make directories
+        location.parent.mkdir(parents=True, exist_ok=True)
+        logger.debug(f"Downloading {key} into {location}")
 
-            # Download file into relevant paths
-            s3.download_file(BUCKET_NAME, key, location)
+        # Download file into relevant paths
+        s3.download_file(BUCKET_NAME, key, location)
 
-        # Copy configuration files into mounted EFS
-        shutil.copytree(LOCAL.tmp_config / "ait", EFS.setup / "configs", dirs_exist_ok=True)
+    # Copy configuration files into mounted EFS
+    shutil.copytree(LOCAL.tmp_config / "ait", EFS.setup / "configs", dirs_exist_ok=True)
 
-        # Copy AIT configuration files into AIT-Core directory
-        shutil.copytree(
-            LOCAL.tmp_config / "ait" / "config", EFS.ait_core / "config", dirs_exist_ok=True
-        )
+    # Copy AIT configuration files into AIT-Core directory
+    shutil.copytree(
+        LOCAL.tmp_config / "ait" / "config", EFS.ait_core / "config", dirs_exist_ok=True
+    )
 
-        # Extract and open OpenMCT Application
-        with tarfile.open(LOCAL.modules / "openmct-static.tgz", mode="r|gz") as openmct_tar:
-            openmct_tar.extractall(path=EFS.ait)
+    # Extract and open OpenMCT Application
+    with tarfile.open(LOCAL.modules / "openmct-static.tgz", mode="r|gz") as openmct_tar:
+        openmct_tar.extractall(path=EFS.ait)
 
-        logging.info("All downloads completed...")
-        status = cfnresponse.SUCCESS
+    logger.info("All downloads completed...")
 
-    elif event["RequestType"] in ["Delete", "Update"]:
-        # TODO: handle Update event with s3 sync or some other safe-copy functionality
-        # No action needs to be taken for delete or update events
-        status = cfnresponse.SUCCESS
-        responseData["LambaTest"] = "Not Create"
-    else:
-        responseData = {"Message": "Invalid Request Type"}
+    path = Path("/mnt/efs/ait/")
+    logger.info("Listing directories in: %s", str(path.absolute()))
+    logger.info("\n\t" + "\n\t".join(path.glob("*")))
 
-    path = "/mnt/efs/ait/"
-    logging.info("Listing directories in: %s", path)
-
-    # Send response back to CFN
-    cfnresponse.send(event, context, status, responseData)
+    helper.Data.update(responseData)
