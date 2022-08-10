@@ -160,18 +160,18 @@ Resources:
   AitEfsBootstrap:
     Type: AWS::CloudFormation::CustomResource
     Properties:
-      ServiceToken: !GetAtt CopyAitDeploymentEfs.Arn
+      ServiceToken: !GetAtt BootstrapEfsFunction.Arn
       BucketName: !Ref ConfigBucketName
-  CopyAitDeploymentEfs:
+  BootstrapEfsFunction:
     Type: AWS::Lambda::Function
     DependsOn:
       - 'MountTargetPrivateA'
       - 'MountTargetPrivateB'
     Properties:
-      Handler: copy_ait_deployment.handler
+      Handler: bootstrap_efs.handler
       Code:
         S3Bucket: !Ref QSS3BucketName
-        S3Key: !Sub '${QSS3KeyPrefix}functions/packages/CopyAitDeployment/lambda.zip'
+        S3Key: !Sub '${QSS3KeyPrefix}functions/packages/BootstrapEfs/lambda.zip'
       Description: Bootstrap an EFS Filesystem with the files needed for the Aerie Deployment
       MemorySize: 128
       Timeout: 900
