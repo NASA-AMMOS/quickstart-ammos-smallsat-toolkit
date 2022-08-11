@@ -41,11 +41,9 @@ class EFS:
 
 # Define Software resources (github url and version)
 @dataclass
-class Software:
+class AmmosSoftware:
     name: str
     version: str
-    repo: str
-    archive_url: str
 
     def __post_init__(self):
         self.repo = f"https://github.com/NASA-AMMOS/{self.name}"
@@ -53,9 +51,9 @@ class Software:
 
 
 # TODO: Get Software version from event properties to download specified version
-AIT = Software("AIT-Core", "2.3.5")
-AIT_GUI = Software("AIT-GUI", "2.3.1")
-AIT_DSN = Software("AIT-DSN", "2.0.0")
+AIT = AmmosSoftware("AIT-Core", "2.3.5")
+AIT_GUI = AmmosSoftware("AIT-GUI", "2.3.1")
+AIT_DSN = AmmosSoftware("AIT-DSN", "2.0.0")
 
 
 def download_tar_gz(url: str, path: os.PathLike):
@@ -70,7 +68,7 @@ def download_tar_gz(url: str, path: os.PathLike):
     logger.info("File from %s downloaded from %s", url, path)
 
 
-def download_software(software: Software, location: Path):
+def download_software(software: AmmosSoftware, location: Path):
     """Download a software artifact as a tgz and extract to EFS
 
     :param software: The Software to be downloaded
