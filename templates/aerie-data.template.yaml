@@ -225,6 +225,17 @@ Resources:
         Path: /efs/init_hasura
       FileSystemId: !Ref FileSystem
 
+  CommandingInitAccessPoint:
+    Type: AWS::EFS::AccessPoint
+    Properties:
+      RootDirectory:
+        CreationInfo:
+          OwnerUid: "1001"
+          OwnerGid: "1001"
+          Permissions: "664"
+        Path: /efs/init_commanding
+      FileSystemId: !Ref FileSystem
+
   PostgresDataAccessPoint:
     Type: AWS::EFS::AccessPoint
     Properties:
@@ -348,6 +359,14 @@ Outputs:
   HasuraInitAccessPointArn:
     Description: Access Point for HasuraInit AccessPoint
     Value: !GetAtt HasuraInitAccessPoint.Arn
+
+  # Commanding Init
+  CommandingInitAccessPointId:
+    Description: Access Point for CommandingInit AccessPoint
+    Value: !Ref CommandingInitAccessPoint
+  CommandingInitAccessPointArn:
+    Description: Access Point for CommandingInit AccessPoint
+    Value: !GetAtt CommandingInitAccessPoint.Arn
 
   EfsSecurityGroupId:
     Description: "Security group ID for lambda function"
