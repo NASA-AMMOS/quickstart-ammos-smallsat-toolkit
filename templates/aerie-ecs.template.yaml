@@ -109,22 +109,6 @@ Resources:
       GroupId:
         !Ref EfsSecurityGroupId
 
-  CommandingTargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      HealthCheckIntervalSeconds: 30
-      HealthCheckPath: /
-      HealthCheckTimeoutSeconds: 5
-      UnhealthyThresholdCount: 2
-      HealthyThresholdCount: 2
-      Matcher:
-        HttpCode: 200,302
-      Name: !Sub "${ProjectName}-CommandingTargetGroup"
-      Port: 27184
-      Protocol: HTTP
-      TargetType: ip
-      VpcId: !Ref VpcId
-
   UiTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
@@ -458,7 +442,7 @@ Resources:
     Type: AWS::ECS::TaskDefinition
     Properties:
       ContainerDefinitions:
-        - Name: commanding
+        - Name: aerie-commanding
           Image: 016915823617.dkr.ecr.us-gov-west-1.amazonaws.com/aerie-commanding:latest
           PortMappings:
             - ContainerPort: 27184
@@ -488,7 +472,7 @@ Resources:
             Options:
               awslogs-region: !Ref AWS::Region
               awslogs-group: !Ref LogGroup
-              awslogs-stream-prefix: commanding
+              awslogs-stream-prefix: aerie-commanding
           MountPoints:
             - ContainerPath: /commanding-metadata
               SourceVolume: init_commanding
@@ -884,7 +868,7 @@ Resources:
             Type: SRV
       HealthCheckCustomConfig:
         FailureThreshold: 1
-      Name: commanding
+      Name: aerie-commanding
       NamespaceId: !Ref PrivateNamespace
 
   CommandingService:
@@ -893,7 +877,7 @@ Resources:
     Properties:
       LaunchType: FARGATE
       Cluster: !Ref FargateCluster
-      ServiceName: commanding
+      ServiceName: aerie-commanding
       DesiredCount: 1
       TaskDefinition: !Ref CommandingTask
       EnableExecuteCommand: true
@@ -904,10 +888,6 @@ Resources:
           SecurityGroups:
             - !Ref EcsInternalSecurityGroup
             - !Ref EcsSecurityGroup
-      LoadBalancers:
-        - TargetGroupArn: !Ref CommandingTargetGroup
-          ContainerPort: 27184
-          ContainerName: commanding
       ServiceRegistries:
         - RegistryArn: !GetAtt CommandingDiscoveryService.Arn
           Port: 27184
