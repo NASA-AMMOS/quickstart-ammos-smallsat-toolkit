@@ -6,6 +6,7 @@ import urllib.request
 import zipfile
 import tarfile
 from crhelper import CfnResource
+from io import BytesIO
 
 helper = CfnResource()
 
@@ -24,9 +25,9 @@ def clone_deployment(event, _):
             except Exception as e:
                 print('Failed to delete %s. Reason: %s' % (file_path, e))
 
-    url = 'https://github.com/NASA-AMMOS/aerie/releases/latest/download/Deployment.tar.gz'
+    url = 'https://github.com/NASA-AMMOS/aerie/releases/download/v0.12.3/deployment.zip'
     filehandle = urllib.request.urlopen(url)
-    tar = tarfile.open(fileobj=filehandle, mode="r|gz")
+    tar = zipfile.ZipFile(BytesIO(filehandle.read()))
     tar.extractall("/tmp")
     tar.close()
 
@@ -35,6 +36,7 @@ def clone_deployment(event, _):
     pathlib.Path("/mnt/efs/deployment").mkdir(parents=True, exist_ok=True)
     pathlib.Path("/mnt/efs/init_postgres").mkdir(parents=True, exist_ok=True)
     pathlib.Path("/mnt/efs/init_hasura").mkdir(parents=True, exist_ok=True)
+    pathlib.Path("/mnt/efs/init_commanding").mkdir(parents=True, exist_ok=True)
 
     shutil.copytree("/tmp/deployment", "/mnt/efs/deployment", dirs_exist_ok=True)
     shutil.copytree("/tmp/deployment/postgres-init-db", "/mnt/efs/init_postgres", dirs_exist_ok=True)
