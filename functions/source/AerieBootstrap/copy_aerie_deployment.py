@@ -1,4 +1,5 @@
 import os
+import io
 import shutil
 import subprocess
 import pathlib
@@ -27,9 +28,9 @@ def clone_deployment(event, _):
 
     url = 'https://github.com/NASA-AMMOS/aerie/releases/download/v0.12.3/deployment.zip'
     filehandle = urllib.request.urlopen(url)
-    tar = zipfile.ZipFile(BytesIO(filehandle.read()))
-    tar.extractall("/tmp")
-    tar.close()
+    with zipfile.ZipFile(io.BytesIO(filehandle.read())) as zipObj:
+        # Extract all the contents of zip file in different directory
+        zipObj.extractall('/tmp')
 
     pathlib.Path("/mnt/efs/aerie").mkdir(parents=True, exist_ok=True)
     pathlib.Path("/mnt/efs/postgres").mkdir(parents=True, exist_ok=True)
