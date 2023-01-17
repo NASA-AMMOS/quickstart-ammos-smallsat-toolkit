@@ -336,6 +336,8 @@ Resources:
         - !Sub ${ProjectName}-LoggingLambdaRole
         - !Sub ${ProjectName}-CognitoAdminRole
         - !Sub ${ProjectName}-BastionHostRole
+        - !Sub ${ProjectName}-BootstrapEfsRole
+        - !Sub ${ProjectName}-BackupEfsRole
   IamStack:
     Type: AWS::CloudFormation::Stack
     Condition: DeployIam
@@ -478,6 +480,32 @@ Resources:
   #             - !If [DeployVpc, !GetAtt VPCStack.Outputs.PrivateSubnet2AID, !Ref PrivateSubnet2AID]
   #       IamRoleName: !If [DeployIam, !GetAtt IamStack.Outputs.EditorServerRoleName, !GetAtt RoleArns.EditorServerRoleName]
   #       VPCID: !If [DeployVpc, !GetAtt VPCStack.Outputs.VPCID, !Ref VpcId]
+  AstDataStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/ammos-cubs-ait.template.yaml'
+        - S3Region: !If [UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion]
+          S3Bucket: !If [UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName]
+      Parameters:
+        ProjectName: !Ref ProjectName
+        ConfigBucketName:
+          Fn::ImportValue:
+            !Sub "${ProjectName}-ConfigBucketName"
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+        VpcId: !Ref VpcId
+        PrivateSubnet1AID: !If [DeployVpc, !GetAtt VPCStack.Outputs.PrivateSubnet2AID, !Ref PrivateSubnet1AID]
+        PrivateSubnet1BID: !If [DeployVpc, !GetAtt VPCStack.Outputs.PrivateSubnet2AID, !Ref PrivateSubnet2AID]
+        PrivateSubnet1CID: !If [DeployVpc, !GetAtt VPCStack.Outputs.PrivateSubnet2AID, !Ref PrivateSubnet3AID]
+        BootstrapRoleArn:  !If [DeployIam, !GetAtt IamStack.Outputs.BootstrapEfsRoleArn, !GetAtt RoleArns.BootstrapEfsRoleArn]
+        EnableBackups: ""
+        # BackupRoleArn: !Ref BackupRoleArn
+        # ScheduleExpression: !Ref ScheduleExpression
+        # StartWindowMinutes: !Ref StartWindowMinutes
+        # CompletionWindowMinutes: !Ref CompletionWindowMinutes
+        # MoveToColdStorageAfterDays: !Ref MoveToColdStorageAfterDays
+        # DeleteAfterDays: !Ref DeleteAfterDays
   AmmosCubsAITStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -513,6 +541,9 @@ Resources:
           - !GetAtt ConfigureSSLStack.Outputs.ACMCertificate
           - !Ref SSLCertificateArn
         ALBArn: !GetAtt AmmosCubsALBStack.Outputs.AlbArn
+        EfsSecurityGroupID: !GetAtt AstDataStack.Outputs.EfsSecurityGroupId
+        EfsFileSystemID: !GetAtt AstDataStack.Outputs.EfsFileSystemId
+        EfsAitAccessPointID: !GetAtt AstDataStack.Outputs.EfsFileSystemId
   ConfigureSSLStack:
     # DependsOn: CFNEndpoint
     Condition: GenerateSSL

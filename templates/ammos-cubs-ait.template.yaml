@@ -32,25 +32,6 @@ Parameters:
     Default: 604800 # One day
     MinValue: 60
     MaxValue: 604800
-  QSS3BucketName:
-    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
-    ConstraintDescription: Quick Start bucket name can include numbers, lowercase
-      letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen
-      (-).
-    Default: aws-quickstart
-    Description: S3 bucket name for the Quick Start assets. This string can include
-      numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start
-      or end with a hyphen (-).
-    Type: String
-  QSS3KeyPrefix:
-    AllowedPattern: ^[0-9a-zA-Z-/]*$
-    ConstraintDescription: Quick Start key prefix can include numbers, lowercase letters,
-      uppercase letters, hyphens (-), and forward slash (/).
-    Default: quickstart-ammos-smallsat-toolkit/
-    Description: S3 key prefix for the Quick Start assets. Quick Start key prefix
-      can include numbers, lowercase letters, uppercase letters, hyphens (-), and
-      forward slash (/).
-    Type: String
   IamRoleName:
     Description: Name of the pre-deployed IAM Role to use with the AIT Server
     Type: String
@@ -69,6 +50,12 @@ Parameters:
   ListenerCertificateArn:
     Type: String
   ALBArn:
+    Type: String
+  EfsSecurityGroupID:
+    Type: String
+  EfsFileSystemID:
+    Type: String
+  EfsAitAccessPointID:
     Type: String
 Conditions:
   SshEnabled: !Not
@@ -92,103 +79,6 @@ Mappings:
       RHELHA84HVM: ami-0cca63ccd9a87f1b2
 
 Resources:
-  EfsSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      VpcId:
-        Ref: VPCID
-      GroupDescription: 'EFS Security Group'
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 2049
-          ToPort: 2049
-          CidrIp: 0.0.0.0/0
-
-  FileSystem:
-    Type: AWS::EFS::FileSystem
-    Properties:
-      Encrypted: true
-      PerformanceMode: generalPurpose
-      BackupPolicy:
-        Status: DISABLED
-      FileSystemTags:
-        - Key: Name
-          Value: !Sub '${ProjectName}-ait-efs'
-
-  MountTargetPrivateA:
-    Type: AWS::EFS::MountTarget
-    Properties:
-      FileSystemId: !Ref FileSystem
-      SubnetId: 'subnet-03a1ec6be37d72106'
-      SecurityGroups:
-        - Ref: EfsSecurityGroup
-  MountTargetPrivateB:
-    Type: AWS::EFS::MountTarget
-    Properties:
-      FileSystemId: !Ref FileSystem
-      SubnetId: 'subnet-09abda62751c89495'
-      SecurityGroups:
-        - Ref: EfsSecurityGroup
-
-  RootAccessPoint:
-    Type: AWS::EFS::AccessPoint
-    Properties:
-      FileSystemId: !Ref FileSystem
-      PosixUser:
-        Uid: '1001'
-        Gid: '1001'
-      RootDirectory:
-        CreationInfo:
-          OwnerGid: '1001'
-          OwnerUid: '1001'
-          Permissions: '755'
-        Path: '/efs'
-  AitAccessPoint:
-    Type: AWS::EFS::AccessPoint
-    Properties:
-      FileSystemId: !Ref FileSystem
-      PosixUser:
-        Uid: '1001'
-        Gid: '1001'
-      RootDirectory:
-        CreationInfo:
-          OwnerGid: '1001'
-          OwnerUid: '1001'
-          Permissions: '755'
-        Path: '/efs/ait'
-
-  AitEfsBootstrap:
-    Type: AWS::CloudFormation::CustomResource
-    Properties:
-      ServiceToken: !GetAtt BootstrapEfsFunction.Arn
-      BucketName: !Ref ConfigBucketName
-  BootstrapEfsFunction:
-    Type: AWS::Lambda::Function
-    DependsOn:
-      - 'MountTargetPrivateA'
-      - 'MountTargetPrivateB'
-    Properties:
-      Handler: bootstrap_efs.handler
-      Code:
-        S3Bucket: !Ref QSS3BucketName
-        S3Key: !Sub '${QSS3KeyPrefix}functions/packages/BootstrapEfs/lambda.zip'
-      Description: Bootstrap an EFS Filesystem with the files needed for the Aerie Deployment
-      MemorySize: 128
-      Timeout: 900
-      # Need to change this to updated IAM
-      Role: 'arn:aws-us-gov:iam::016915823617:role/account-managed/lambda/VK-MyBasicLambdaExecution'
-      Runtime: python3.9
-      Environment:
-        Variables:
-          BUCKET_NAME: !Ref ConfigBucketName
-      VpcConfig:
-        SecurityGroupIds:
-          - !Ref EfsSecurityGroup
-        SubnetIds: !Ref PrivateSubnetIds
-      FileSystemConfigs:
-        - Arn: !GetAtt 'RootAccessPoint.Arn'
-          LocalMountPath: '/mnt/efs'
-
   AitServerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -208,6 +98,15 @@ Resources:
           FromPort: 8082
           ToPort: 8082
           SourceSecurityGroupId: !Ref ALBSecurityGroupID
+  AitEfsIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref EfsSecurityGroupID
+      IpProtocol: tcp
+      FromPort: 2049
+      ToPort: 2049
+      SourceSecurityGroupId: !Ref AitServerSecurityGroup
+
   AitAutoScalingGroupInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
@@ -305,8 +204,8 @@ Resources:
           pip3 install botocore
           # Define mount location and efs id
           DIR_TGT=/mnt/efs/ait/
-          EFS_FILE_SYSTEM_ID=${FileSystem}
-          AIT_EFS_ACCESSPOINT_ID=${AitAccessPoint}
+          EFS_FILE_SYSTEM_ID=${EfsFileSystemID}
+          AIT_EFS_ACCESSPOINT_ID=${EfsAitAccessPointID}
           mkdir -p $DIR_TGT
           echo "Mounting for  Access Point $AIT_EFS_ACCESSPOINT_ID from filesystem: $EFS_FILE_SYSTEM_ID to $DIR_TGT"
           sudo mount -t efs -o tls,accesspoint=$AIT_EFS_ACCESSPOINT_ID $EFS_FILE_SYSTEM_ID $DIR_TGT

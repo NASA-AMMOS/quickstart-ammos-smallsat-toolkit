@@ -6,17 +6,19 @@ import tarfile
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from typing import Union
 from urllib.request import urlopen
 
 import boto3
-
 from crhelper import CfnResource
 
 # Setup basic configuration for logging
 logger = logging.getLogger(__name__)
 LOGLEVEL = os.getenv("LOGLEVEL", logging.DEBUG)
 logger.setLevel(LOGLEVEL)
-helper = CfnResource(json_logging=False, log_level=LOGLEVEL, boto_level='CRITICAL', sleep_on_delete=120)
+helper = CfnResource(
+    json_logging=False, log_level=LOGLEVEL, boto_level="CRITICAL", sleep_on_delete=120
+)
 
 try:
     # Initialize S3 Resource
@@ -82,21 +84,32 @@ def download_software(software: AmmosSoftware, location: Path):
     shutil.copytree(LOCAL.tmp / f"{software.name}-{software.version}", location, dirs_exist_ok=True)
 
 
-def download_directory_from_s3(bucket_name, remote_path, dir_path):
-    """Function to download a directory from s3"""
+def download_directory_from_s3(bucket_name: str, remote_path: str, local_path: Union[str, Path]):
+    """
+    Sync an S3 path to a local directory
+
+    :param bucket_name: Name of the S3 Bucket
+    :param remote_path: Path prefix in the S3 Bucket for filtering
+    :param dir_path: Path to local directory for downloading files
+    """
     bucket = s3_resource.Bucket(bucket_name)
+
+    local_dir = Path(local_path)
+    if not local_dir.exists():
+        logger.warning("%s did not exists; creating now", local_dir)
+        local_dir.mkdir(parents=True)
+
     # Download each of the files
     for obj in bucket.objects.filter(Prefix=remote_path):
         # Check if the path already exists locally on the lambda file system
-        path = Path(obj.key)
-        if not path.parent.exists():
-            logger.info(f"Creating directory {os.path.dirname(obj.key)}")
-            Path(os.path.dirname(obj.key)).mkdir(parents=True, exist_ok=True)
-            # Check if the files exist on the EFS system
-            efs_path = "/mnt/efs/" + os.path.dirname(obj.key)
-            if not os.path.exists(efs_path):
-                dir_path = dir_path + str(obj.key)
-                bucket.download_file(obj.key, obj.key, dir_path)
+        download_path = local_dir / obj.key
+        if download_path.exists():
+            logger.warning("File already exists on local file system, skipping: %s", download_path)
+            continue
+        else:
+            logger.info("Downloading %s", download_path)
+            download_path.parent.mkdir(parents=True, exist_ok=True)
+            bucket.download_file(obj.key, str(download_path))
 
 
 @helper.create
@@ -126,18 +139,7 @@ def bootstrap(event, context):
 
     ## Configuration files from S3
     logger.info("Downloading Configuration files")
-    # TODO: use s3 downloader function from above?
-    s3 = boto3.client("s3")
-    bucket = s3.list_objects(Bucket=BUCKET_NAME)
-    for content in bucket["Contents"]:
-        key = content["Key"]
-        location: Path = LOCAL.tmp_config / key
-        # Make directories
-        location.parent.mkdir(parents=True, exist_ok=True)
-        logger.debug(f"Downloading {key} into {location}")
-
-        # Download file into relevant paths
-        s3.download_file(BUCKET_NAME, key, location)
+    download_directory_from_s3(BUCKET_NAME, "", LOCAL.tmp)
 
     # Copy configuration files into mounted EFS
     shutil.copytree(LOCAL.tmp_config / "ait", EFS.setup / "configs", dirs_exist_ok=True)
