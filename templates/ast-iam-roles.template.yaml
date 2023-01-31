@@ -278,6 +278,16 @@ Resources:
                   - elasticfilesystem:ClientWrite
                   - elasticfilesystem:ClientRootAccess
                 Resource: !Sub 'arn:${AWS::Partition}:elasticfilesystem:${AWS::Region}:${AWS::AccountId}:file-system/*'
+        - PolicyName: ConfigBucketReadPolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject*
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:s3:::${ProjectName}-config'
+                  - !Sub 'arn:${AWS::Partition}:s3:::${ProjectName}-config/*'
   BackupEfsRole:
     Type: 'AWS::IAM::Role'
     Properties:

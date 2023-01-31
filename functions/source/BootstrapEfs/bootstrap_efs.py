@@ -157,6 +157,9 @@ def bootstrap(event, context):
 
     path = Path("/mnt/efs/ait/")
     logger.info("Listing directories in: %s", str(path.absolute()))
-    logger.info("\n\t" + "\n\t".join(path.glob("*")))
+    logger.info("\n\t" + "\n\t".join((str(f) for f in path.glob("*"))))
 
     helper.Data.update(responseData)
+
+def handler(event, context):
+    helper(event, context)

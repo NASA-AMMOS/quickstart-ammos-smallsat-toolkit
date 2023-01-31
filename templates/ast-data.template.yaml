@@ -40,7 +40,6 @@ Parameters:
   BootstrapRoleArn:
     Description: ARN of the IAM Role created for bootstrapping the EFS FileSystem
     Type: String
-    Default: ""
   EnableBackups:
     Description: Will enable AWS Backups for EFS if "true" (default), or skip if "false"
     Type: String
