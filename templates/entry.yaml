@@ -55,7 +55,7 @@ Resources:
       Path: !If
         - RolePathProvided
         - !Ref 'RolePath'
-        - !Ref 'AWS::NoValue'
+        - "/"
       PermissionsBoundary: !If
         - PermissionsBoundaryProvided
         - !Ref 'PermissionsBoundaryArn'
